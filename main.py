@@ -1,9 +1,8 @@
 from sklearn import preprocessing
 import numpy as np
-import re
-import copy
-import time
+import spacy
 from scipy.spatial.distance import cosine
+
 
 class Dataset:
     def __init__(self,name):
@@ -79,30 +78,38 @@ class Dataset_annot(Dataset):
 
     def run_alg(self,alg):
         results= []
+        print("Training...")
         alg.train(self)
         for i in range(len(self.data[0])):
             results.append(float(alg.compare(self.data[0][i],self.data[1][i])))
+            print(float(alg.compare(self.data[0][i],self.data[1][i])))
         return results-self.norm_score
     
 
 class BagOfWords:
-    def __init__(self):
-        self.dict = {}
+    def __init__(self, language = "english"):
+        self.dict = []
+        self.language = language
+        if self.language == "english":
+            self.nlp = spacy.load("en_core_web_sm")
+        if self.language == "german":
+            self.nlp = spacy.load("de_core_news_sm")
 
     def train(self,Dataset):
-        data=[]
+        data = ''
         for sets in Dataset.data:
             for item in sets:
-                data+=re.sub(r'\W+', ' ', item).split(" ")
-        data = np.array(data)
-        self.dict=np.unique(data, return_counts=True)
+                data = data + item
+        doc = self.nlp(data)
+        for token in doc:
+            self.dict.append(token.lemma_)
+        self.dict = list(set(self.dict))
 
     def create_vec(self,line):
-        bag = copy.deepcopy(self.dict[0])
-        count = np.zeros(len(bag))
-        words = re.sub(r'\W+', ' ', line).split(" ")
-        for item in words:
-            count[np.where(bag==item)]+=1
+        count = np.zeros(len(self.dict))
+        words = self.nlp(line)
+        for token in words:
+            count[np.where(np.array(self.dict)==token.lemma_)]+=1
         return count
     
     def compare(self, a,b):
