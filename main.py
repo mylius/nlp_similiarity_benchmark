@@ -1,6 +1,7 @@
 from sklearn import preprocessing
 import numpy as np
 import spacy
+import re
 from scipy.spatial.distance import cosine
 
 
@@ -87,33 +88,43 @@ class Dataset_annot(Dataset):
     
 
 class BagOfWords:
-    def __init__(self, language = "english"):
+    def __init__(self, language = "english",disable=["ner"]):
         self.dict = []
         self.language = language
+        self.disable = disable
         if self.language == "english":
             self.nlp = spacy.load("en_core_web_sm")
         if self.language == "german":
             self.nlp = spacy.load("de_core_news_sm")
 
-    def train(self,Dataset):
+    def train(self,Dataset,lemmatize=True, stop = True):
         data = ''
         for sets in Dataset.data:
             for item in sets:
-                data = data + item
-        doc = self.nlp(data)
-        for token in doc:
-            self.dict.append(token.lemma_)
-        self.dict = list(set(self.dict))
+                data = data + item + " "
+        if lemmatize:
+            doc = self.nlp(data, disable = self.disable)
+            for token in doc:
+                self.dict.append(token.lemma_)
+        else:
+            data=np.array(re.sub(r'\W+', ' ', data).split(" "))
+        if stop:
+            if self.language=="german":
+                stopwords = spacy.lang.de.stop_words.STOP_WORDS
+            if self.language=="english":
+                stopwords = spacy.lang.en.stop_words.STOP_WORDS
+            self.dict = [token for token in self.dict if not token in stopwords]
+        self.dict = np.unique(self.dict, return_counts=True)
+        print(self.dict[0])
+
+
 
     def create_vec(self,line):
-        count = np.zeros(len(self.dict))
+        count = np.zeros(len(self.dict[0]))
         words = self.nlp(line)
         for token in words:
-            count[np.where(np.array(self.dict)==token.lemma_)]+=1
+            count[np.where(np.array(self.dict[0])==token.lemma_)]+=1
         return count
     
     def compare(self, a,b):
         return cosine(self.create_vec(a),self.create_vec(b))
-
-        
-
