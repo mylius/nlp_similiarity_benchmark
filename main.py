@@ -2,6 +2,8 @@ from sklearn import preprocessing
 import numpy as np
 import re
 import copy
+import time
+from scipy.spatial.distance import cosine
 
 class Dataset:
     def __init__(self,name):
@@ -80,7 +82,7 @@ class Dataset_annot(Dataset):
         alg.train(self)
         for i in range(len(self.data[0])):
             results.append(float(alg.compare(self.data[0][i],self.data[1][i])))
-        return results-db.norm_score
+        return results-self.norm_score
     
 
 class BagOfWords:
@@ -103,44 +105,8 @@ class BagOfWords:
             count[np.where(bag==item)]+=1
         return count
     
-    def cosine(self, a,b,scale=1):
-        if scale == 1:
-            scale = np.array([1])*len(a)
-        a=a*scale
-        b=b*scale
-        return np.sum(a*b)/(np.linalg.norm(a)*np.linalg.norm(b))
-
     def compare(self, a,b):
-        return self.cosine(self.create_vec(a),self.create_vec(b))
+        return cosine(self.create_vec(a),self.create_vec(b))
 
         
 
-
-
-db = Dataset_annot("sick")
-db.load_sick("./data/SICK.txt")
-#print(db)
-db.norm_scores()
-#print(db[9592])
-#print(db.norm_score)
-print(len(db))
-
-print(db.search("bamboo cane"))
-db2 = Dataset("test")
-db2.load_data("./data/nachrichten.txt")
-
-
-bow=BagOfWords()
-bow.train(db2)
-"""max = [0,0,0]
-for j in range(len(db2.data)):
-    for i in range(len(db2.data)):
-        if j!=i:
-            if bow.compare(db2.data[j],db2.data[i])>max[0]:
-                max=[bow.compare(db2.data[j],db2.data[i]),j,i]
-            
-print(max)"""
-    
-print(bow.compare(db2.data[0][1],db2.data[0][48]))
-print(bow.compare(db.data[0][0],db.data[0][1]))
-print(db.run_alg(bow))
