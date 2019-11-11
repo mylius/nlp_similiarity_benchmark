@@ -17,7 +17,3 @@ Word2Vec
 Annotation-Feature
 
 
-Dumme Ansätze via parametern anwählbar machen.
-Mehr der (Spacy) Optionen via parametern wählbar machen.
-speichern: pickle/json/
-SPacy komponenten ausschalten: named_entity_recognition
