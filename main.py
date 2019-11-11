@@ -2,12 +2,8 @@ from sklearn import preprocessing
 import numpy as np
 import spacy
 import re
-<<<<<<< HEAD
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy import sparse
-=======
-from scipy.spatial.distance import cosine
->>>>>>> 8b3d537b574a961a5a373e38bed5e70732eb1a20
 
 
 class Dataset:
@@ -123,20 +119,14 @@ class BagOfWords:
         self.dict = []
         self.language = language
         self.disable = disable
-<<<<<<< HEAD
         self.trained = False
-=======
->>>>>>> 8b3d537b574a961a5a373e38bed5e70732eb1a20
         if self.language == "english":
             self.nlp = spacy.load("en_core_web_sm")
         if self.language == "german":
             self.nlp = spacy.load("de_core_news_sm")
 
     def train(self,Dataset,lemmatize=True, stop = True):
-<<<<<<< HEAD
         """Creates a dictionary of occuring words for a given dataset."""
-=======
->>>>>>> 8b3d537b574a961a5a373e38bed5e70732eb1a20
         data = ''
         for sets in Dataset.data:
             for item in sets:
@@ -154,25 +144,16 @@ class BagOfWords:
                 stopwords = spacy.lang.en.stop_words.STOP_WORDS
             self.dict = [token for token in self.dict if not token in stopwords]
         self.dict = np.unique(self.dict, return_counts=True)
-<<<<<<< HEAD
         self.trained = True
         print(self.dict[0])
 
 
     def create_vec(self,line):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
-=======
-        print(self.dict[0])
-
-
-
-    def create_vec(self,line):
->>>>>>> 8b3d537b574a961a5a373e38bed5e70732eb1a20
         count = np.zeros(len(self.dict[0]))
         words = self.nlp(line)
         for token in words:
             count[np.where(np.array(self.dict[0])==token.lemma_)]+=1
-<<<<<<< HEAD
         return sparse.csr_matrix(count)
     
     def compare_create(self, a,b):
@@ -194,9 +175,3 @@ BoW = BagOfWords()
 
 db.calc_vecs(BoW)
 db.run_alg(BoW)
-=======
-        return count
-    
-    def compare(self, a,b):
-        return cosine(self.create_vec(a),self.create_vec(b))
->>>>>>> 8b3d537b574a961a5a373e38bed5e70732eb1a20
