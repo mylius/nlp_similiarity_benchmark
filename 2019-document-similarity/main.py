@@ -2,7 +2,8 @@ from sklearn import preprocessing
 import numpy as np
 import spacy
 import re
-from scipy.spatial.distance import cosine
+from sklearn.metrics.pairwise import cosine_similarity
+from scipy import sparse
 
 
 class Dataset:
@@ -38,9 +39,11 @@ class Dataset_annot(Dataset):
         self.name = name
         self.data = [[],[]]
         self.norm_score = []
+        self.vecs = {}  
 
-    def load_sick(self, path):
-        file = open(path, "r") 
+    def load_sick(self):
+        """Loads the Sick dataset."""
+        file = open("./data/SICK.txt", "r") 
         i=0
         for line in file.readlines():
             line = line.split("\t")
@@ -62,6 +65,7 @@ class Dataset_annot(Dataset):
 
 
     def norm_scores(self):
+        """Creates a list of normed scores."""
         self.norm_score = []        
         self.norm_score = preprocessing.minmax_scale(self.scores)
         
@@ -69,6 +73,7 @@ class Dataset_annot(Dataset):
         return len(self.ids)
 
     def search(self, word):
+        """Search for a word in the data set and returns a list of all entries containing the word."""
         results = []
         for i in range(len(self.data[0])):
             if word in self.data[0][i]:
@@ -78,13 +83,35 @@ class Dataset_annot(Dataset):
         return results
 
     def run_alg(self,alg):
+        """Runs a given algorithm and returns the difference to the ground truth."""
         results= []
-        print("Training...")
-        alg.train(self)
+        if not alg.trained:
+            print("Training...")
+            alg.train(self)
+        if self.vecs[alg]!= None:
+            data=self.vecs[alg]
+            comp = alg.compare
+        else:
+            comp = alg.compare_create
+            data=self.data
         for i in range(len(self.data[0])):
-            results.append(float(alg.compare(self.data[0][i],self.data[1][i])))
-            print(float(alg.compare(self.data[0][i],self.data[1][i])))
+            res = float(comp(data[0][i],data[1][i]))
+            results.append(res)
+            print(res)
         return results-self.norm_score
+
+    def calc_vecs(self,alg):
+        """Precalculates the vectors and stores them in memory."""
+        if not alg.trained:
+            print("Training...")
+            alg.train(self)
+        self.vecs[alg]=[[],[]]
+        print("Creating Vectors")
+        for value in self.data[0]:
+            self.vecs[alg][0].append(alg.create_vec(value))
+        for value in self.data[1]:
+            self.vecs[alg][1].append(alg.create_vec(value))
+
     
 
 class BagOfWords:
@@ -92,12 +119,14 @@ class BagOfWords:
         self.dict = []
         self.language = language
         self.disable = disable
+        self.trained = False
         if self.language == "english":
             self.nlp = spacy.load("en_core_web_sm")
         if self.language == "german":
             self.nlp = spacy.load("de_core_news_sm")
 
     def train(self,Dataset,lemmatize=True, stop = True):
+        """Creates a dictionary of occuring words for a given dataset."""
         data = ''
         for sets in Dataset.data:
             for item in sets:
@@ -115,16 +144,34 @@ class BagOfWords:
                 stopwords = spacy.lang.en.stop_words.STOP_WORDS
             self.dict = [token for token in self.dict if not token in stopwords]
         self.dict = np.unique(self.dict, return_counts=True)
+        self.trained = True
         print(self.dict[0])
 
 
-
     def create_vec(self,line):
+        """Returns a matrix denoting which words from the dictionary occure in a given line."""
         count = np.zeros(len(self.dict[0]))
         words = self.nlp(line)
         for token in words:
             count[np.where(np.array(self.dict[0])==token.lemma_)]+=1
-        return count
+        return sparse.csr_matrix(count)
+    
+    def compare_create(self, a,b):
+        """Returns the cosine similarity between two matrives a,b.
+        Interestingly scipys cosine function doesn't work on scipys sparse matrices, while sklearns does."""
+        return cosine_similarity(self.create_vec(a),self.create_vec(b))
     
     def compare(self, a,b):
-        return cosine(self.create_vec(a),self.create_vec(b))
+        """Returns the cosine similarity between two matrives a,b.
+        Interestingly scipys cosine function doesn't work on scipys sparse matrices, while sklearns does."""
+        return cosine_similarity(a,b)
+    
+
+
+db = Dataset_annot("sick")
+db.load_sick()
+
+BoW = BagOfWords()
+
+db.calc_vecs(BoW)
+db.run_alg(BoW)
