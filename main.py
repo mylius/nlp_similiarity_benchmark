@@ -89,7 +89,7 @@ class Dataset_annot(Dataset):
         if not alg.trained:
             print("Training...")
             alg.train(self)
-        if self.vecs[alg]!= None:
+        if alg in self.vecs:
             data=self.vecs[alg]
             comp = alg.compare
         else:
@@ -113,10 +113,20 @@ class Dataset_annot(Dataset):
         for value in self.data[1]:
             self.vecs[alg][1].append(alg.create_vec(value))
 
-    
+class Algorithm:
+    def __init__(self, name, language = "english",):
+        self.name = name
+        self.trained = False
 
-class BagOfWords:
-    def __init__(self, language = "english",disable=["ner"]):
+    def train(self):
+        pass
+
+    def compare(self):
+        pass
+
+class BagOfWords(Algorithm):
+    def __init__(self, disable=["ner"], language = "english",):
+        self.name = "BagOfWords"
         self.dict = []
         self.language = language
         self.disable = disable
@@ -166,13 +176,16 @@ class BagOfWords:
         """Returns the cosine similarity between two matrives a,b.
         Interestingly scipys cosine function doesn't work on scipys sparse matrices, while sklearns does."""
         return cosine_similarity(a,b)
-    
 
 
-db = Dataset_annot("sick")
-db.load_sick()
-db.norm_scores()
+def benchmark(algs):
+    db = Dataset_annot("sick")
+    db.load_sick()
+    db.norm_scores()
+    print("Results for SICK dataset:")
+    for i in range(len(algs)):
+        print(algs[i].name + "correlation: " + db.run_alg(algs[i]))
+
+
 BoW = BagOfWords()
-
-db.calc_vecs(BoW)
-print(db.run_alg(BoW))
+benchmark([BoW])
