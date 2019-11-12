@@ -4,6 +4,7 @@ import spacy
 import re
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy import sparse
+from scipy.stats import pearsonr
 
 
 class Dataset:
@@ -98,7 +99,7 @@ class Dataset_annot(Dataset):
             res = float(comp(data[0][i],data[1][i]))
             results.append(res)
             print(res)
-        return results-self.norm_score
+        return pearsonr(results,self.norm_score)
 
     def calc_vecs(self,alg):
         """Precalculates the vectors and stores them in memory."""
@@ -170,8 +171,8 @@ class BagOfWords:
 
 db = Dataset_annot("sick")
 db.load_sick()
-
+db.norm_scores()
 BoW = BagOfWords()
 
 db.calc_vecs(BoW)
-db.run_alg(BoW)
+print(db.run_alg(BoW))
