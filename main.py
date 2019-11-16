@@ -5,7 +5,10 @@ import re
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy import sparse
 from scipy.stats import pearsonr
-
+from scipy.stats import spearmanr
+from sklearn.metrics import mean_squared_error
+from multiprocessing import Pool,Process,Manager
+import os
 
 class Dataset:
     def __init__(self,name):
@@ -43,7 +46,7 @@ class Dataset_annot(Dataset):
         self.vecs = {}  
 
     def load_sick(self):
-        """Loads the Sick dataset."""
+        """Loads the SICK dataset."""
         file = open("./data/SICK.txt", "r") 
         i=0
         for line in file.readlines():
@@ -54,6 +57,23 @@ class Dataset_annot(Dataset):
             self.ids.append(i)
             i+=1
 
+    def load_sts(self):
+        """Loads the STS-2017-en-en dataset."""
+        file = open("./data/STS.input.track5.en-en.txt", "r") 
+        i=0
+        for line in file.readlines():
+            line = line.split("\t")
+            self.data[0].append(line[0])
+            self.data[1].append(line[1])
+            self.ids.append(i)
+            i+=1
+        file = open("./data/STS.gs.track5.en-en.txt", "r") 
+        for line in file.readlines():
+            self.scores.append(float(line))
+            i+=1
+
+
+
     def __str__(self):
         output = ""
         for i in range(len(self.data[0])):
@@ -63,7 +83,6 @@ class Dataset_annot(Dataset):
     def __getitem__(self, y):
         output = str(self.ids[y]) + " " + self.data[0][y] + "\t " + self.data[1][y]+ "\t " + self.scores[y] + "\n"
         return output
-
 
     def norm_scores(self):
         """Creates a list of normed scores."""
@@ -91,14 +110,11 @@ class Dataset_annot(Dataset):
             alg.train(self)
         if alg in self.vecs:
             data=self.vecs[alg]
-            comp = alg.compare
         else:
-            comp = alg.compare_create
-            data=self.data
+            self.calc_vecs(alg)
         for i in range(len(self.data[0])):
-            res = float(comp(data[0][i],data[1][i]))
+            res = float(alg.compare(self.vecs[alg][0][i],self.vecs[alg][1][i]))
             results.append(res)
-            print(res)
         return pearsonr(results,self.norm_score)
 
     def calc_vecs(self,alg):
@@ -108,29 +124,33 @@ class Dataset_annot(Dataset):
             alg.train(self)
         self.vecs[alg]=[[],[]]
         print("Creating Vectors")
-        for value in self.data[0]:
-            self.vecs[alg][0].append(alg.create_vec(value))
-        for value in self.data[1]:
-            self.vecs[alg][1].append(alg.create_vec(value))
+        self.vecs[alg][0] = multithread_shared_object(alg.create_vec,"list",self.data[0])
+        self.vecs[alg][1] = multithread_shared_object(alg.create_vec,"list",self.data[1])
+
 
 class Algorithm:
+
     def __init__(self, name, language = "english",):
-        self.name = name
         self.trained = False
+        self.name = name
+        self.language = language
 
     def train(self):
         pass
+        
+    def compare(self, a,b):
+        """Returns the cosine similarity between two matrives a,b.
+        Interestingly scipys cosine function doesn't work on scipys sparse matrices, while sklearns does."""
+        return cosine_similarity(a,b)
 
-    def compare(self):
-        pass
 
 class BagOfWords(Algorithm):
-    def __init__(self, disable=["ner"], language = "english",):
-        self.name = "BagOfWords"
+      
+    def __init__(self, name="BagOfWords", disable=["ner"], language = "english",):
+        super().__init__(name, language)
         self.dict = []
-        self.language = language
+        self.weights=[]
         self.disable = disable
-        self.trained = False
         if self.language == "english":
             self.nlp = spacy.load("en_core_web_sm")
         if self.language == "german":
@@ -144,38 +164,33 @@ class BagOfWords(Algorithm):
                 data = data + item + " "
         if lemmatize:
             doc = self.nlp(data, disable = self.disable)
-            for token in doc:
-                self.dict.append(token.lemma_)
+            self.dict = multithread_shared_object(self.append_dic,"list",doc)
         else:
             data=np.array(re.sub(r'\W+', ' ', data).split(" "))
+            self.dict,self.weights = np.unique(data, return_counts=True)
         if stop:
             if self.language=="german":
                 stopwords = spacy.lang.de.stop_words.STOP_WORDS
             if self.language=="english":
                 stopwords = spacy.lang.en.stop_words.STOP_WORDS
             self.dict = [token for token in self.dict if not token in stopwords]
-        self.dict = np.unique(self.dict, return_counts=True)
+        self.dict, self.weights = np.unique(self.dict, return_counts=True)
+        self.weights = sparse.csr_matrix(preprocessing.minmax_scale(self.weights))
         self.trained = True
-        print(self.dict[0])
+    
+    def append_dic(self,data, dict,i):
+        for token in data:
+            dict.append(token.lemma_)
 
-
-    def create_vec(self,line):
+    def create_vec(self,data,result,i):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
-        count = np.zeros(len(self.dict[0]))
-        words = self.nlp(line)
-        for token in words:
-            count[np.where(np.array(self.dict[0])==token.lemma_)]+=1
-        return sparse.csr_matrix(count)
-    
-    def compare_create(self, a,b):
-        """Returns the cosine similarity between two matrives a,b.
-        Interestingly scipys cosine function doesn't work on scipys sparse matrices, while sklearns does."""
-        return cosine_similarity(self.create_vec(a),self.create_vec(b))
-    
-    def compare(self, a,b):
-        """Returns the cosine similarity between two matrives a,b.
-        Interestingly scipys cosine function doesn't work on scipys sparse matrices, while sklearns does."""
-        return cosine_similarity(a,b)
+        
+        for j in range(len(data)):
+            words = self.nlp(str(data[j]))
+            count = np.zeros(len(self.dict))
+            for token in words:
+                count[np.where(np.array(self.dict)==token.lemma_)]+=1
+            result[i*len(data)+j] = (sparse.csr_matrix(count))
 
 
 def benchmark(algs):
@@ -184,7 +199,42 @@ def benchmark(algs):
     db.norm_scores()
     print("Results for SICK dataset:")
     for i in range(len(algs)):
-        print(algs[i].name + "correlation: " + db.run_alg(algs[i]))
+        print(algs[i].name + " correlation: " + str(db.run_alg(algs[i])))
+    db2 = Dataset_annot("sts")
+    db2.load_sts()
+    db2.norm_scores()
+    print("Results for STS dataset:")
+    for i in range(len(algs)):
+        print(algs[i].name + " correlation: " + str(db2.run_alg(algs[i])))
+
+def multithread_shared_object(function,s_type, iterable,arguments=None,not_util=2):
+    """Hand a shared object of s_type and an iterable to a function be processed in parallel."""
+    manager = Manager()
+    #assign shared resource
+    if s_type == "list":
+        shared = manager.list(range(len(iterable)))
+    if s_type == "dict":
+        shared = manager.dict()
+    #if threads > 2 reserve the number specified in not_util, use the rest
+    if len(os.sched_getaffinity(0)) > 2:
+        cpus = len(os.sched_getaffinity(0))-not_util
+    else:
+        cpus = len(os.sched_getaffinity(0))
+    processes = []
+    #split iterable into parts
+    split_iter = np.array_split(np.array(iterable),cpus)
+    #create process, start and join them
+    for i in range(cpus):
+        if arguments!=None:
+            p=Process(target=function, args=([split_iter[i],shared,arguments,i]))
+        else:
+            p=Process(target=function, args=([split_iter[i],shared,i]))
+        processes.append(p)
+    for p in processes:
+        p.start()
+    for p in processes:
+        p.join()
+    return shared
 
 
 BoW = BagOfWords()
