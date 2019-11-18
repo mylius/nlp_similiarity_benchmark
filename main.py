@@ -162,18 +162,6 @@ def multithread_shared_object(function, s_type, iterable, arguments=None, not_ut
     return shared
 
 
-def inheritors(klass):
-    subclasses = set()
-    work = [klass]
-    while work:
-        parent = work.pop()
-        for child in parent.__subclasses__():
-            if child not in subclasses:
-                subclasses.add(child)
-                work.append(child)
-    return subclasses
-
-
 def benchmark(algorithms=[]):
     if algorithms:
         algorithms = path_import(args.path)
@@ -226,7 +214,7 @@ def inheritors(klass):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Benchmarks Semantic Similiarty Benchmarks")
-    parser.add_argument("path", metavar="path", type=str,nargs='?',
+    parser.add_argument("path", metavar="path", type=str, nargs='?',
                         help="The path to a *.py with algorithms to benchmark. The Algorithms need to inherit from the Algorithm class.")
     args = parser.parse_args()
     benchmark(args.path)
