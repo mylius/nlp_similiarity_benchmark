@@ -30,15 +30,21 @@ class BagOfWords(Algorithm):
         self.dict = []
         self.weights = []
         self.disable = disable
+        if self.language == "english":
+            self.nlp = spacy.load("en_core_web_sm")
+        if self.language == "german":
+            self.nlp = spacy.load("de_core_news_sm")
 
-    def train(self, Dataset):
+
+    def train(self, input):
         """Creates a dictionary of occuring words for a given dataset."""
         print("Training " + self.name)
         data = []
-        for sets in Dataset.data:
+        for sets in input:
             for item in sets:
                 data+=re.sub(r'\W+', ' ', item).split(" ")
         self.dict, self.weights = np.unique(data, return_counts=True)
+        self.remove_stopwords()
         self.weights = sparse.csr_matrix(
             preprocessing.minmax_scale(self.weights))
         self.trained = True
@@ -73,17 +79,13 @@ class BagOfWords_lemma(BagOfWords):
 
     def __init__(self, name="BagOfWords Lemmatized", disable=["ner"], language="english",):
         super().__init__(name, language)
-        if self.language == "english":
-            self.nlp = spacy.load("en_core_web_sm")
-        if self.language == "german":
-            self.nlp = spacy.load("de_core_news_sm")
 
 
-    def train(self, Dataset, stop=True):
+    def train(self, input, stop=True):
         """Creates a dictionary of occuring words for a given dataset."""
         print("Training " + self.name)
         data = ''
-        for sets in Dataset.data:
+        for sets in input:
             for item in sets:
                 data = data + item + " "
         doc = self.nlp(data, disable=self.disable)
