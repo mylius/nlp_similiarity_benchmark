@@ -1,14 +1,11 @@
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 from scipy.stats import pearsonr
 from scipy.stats import spearmanr
 from sklearn.metrics import mean_squared_error
 from sklearn import preprocessing
-from multiprocessing import Pool, Process, Manager
-import os
 import argparse
 import algs
-import importlib
+import util
 
 
 class Dataset:
@@ -44,6 +41,7 @@ class Dataset_annot(Dataset):
         self.data = [[], []]
         self.norm_score = []
         self.vecs = {}
+        self.cosine = {}
 
     def load_sick(self):
         """Loads the SICK dataset."""
@@ -53,7 +51,7 @@ class Dataset_annot(Dataset):
             line = line.split("\t")
             self.data[0].append(line[1])
             self.data[1].append(line[2])
-            self.scores.append(float(line[4]))
+            self.scores.append((line[4]))
             self.ids.append(i)
             i += 1
 
@@ -102,7 +100,7 @@ class Dataset_annot(Dataset):
                 results.append(self.data[1][i])
         return results
 
-    def run_alg(self, alg):
+    def calc_cosine(self, alg):
         """Runs a given algorithm and returns the difference to the ground truth."""
         results = []
         if not alg.trained:
@@ -116,99 +114,55 @@ class Dataset_annot(Dataset):
             res = float(alg.compare(
                 self.vecs[alg][0][i], self.vecs[alg][1][i]))
             results.append(res)
-        return pearsonr(results, self.norm_score)
+        self.cosine[alg] = results
+    
+    def compare(self, function, alg):
+        if alg not in self.cosine:
+            self.calc_cosine(alg)
+        return function(self.cosine[alg],self.norm_score)
 
     def calc_vecs(self, alg):
         """Precalculates the vectors and stores them in memory."""
         if not alg.trained:
-            print("Training...")
             alg.train(self)
         self.vecs[alg] = [[], []]
         print("Creating Vectors")
-        self.vecs[alg][0] = multithread_shared_object(
+        self.vecs[alg][0] = util.multithread_shared_object(
             alg.create_vec, "list", self.data[0])
-        self.vecs[alg][1] = multithread_shared_object(
+        self.vecs[alg][1] = util.multithread_shared_object(
             alg.create_vec, "list", self.data[1])
-
-
-def multithread_shared_object(function, s_type, iterable, arguments=None, not_util=2):
-    """Hand a shared object of s_type and an iterable to a function be processed in parallel."""
-    manager = Manager()
-    # assign shared resource
-    if s_type == "list":
-        shared = manager.list(range(len(iterable)))
-    if s_type == "dict":
-        shared = manager.dict()
-    # if threads > 2 reserve the number specified in not_util, use the rest
-    if len(os.sched_getaffinity(0)) > 2:
-        cpus = len(os.sched_getaffinity(0))-not_util
-    else:
-        cpus = len(os.sched_getaffinity(0))
-    processes = []
-    # split iterable into parts
-    split_iter = np.array_split(np.array(iterable), cpus)
-    # create process, start and join them
-    for i in range(cpus):
-        if arguments != None:
-            p = Process(target=function, args=(
-                [split_iter[i], shared, arguments, i]))
-        else:
-            p = Process(target=function, args=([split_iter[i], shared, i]))
-        processes.append(p)
-    for p in processes:
-        p.start()
-    for p in processes:
-        p.join()
-    return shared
 
 
 def benchmark(algorithms=[]):
     if algorithms:
-        algorithms = path_import(args.path)
-        algorithms = inheritors(algorithms.Algorithm)
-    standard = inheritors(algs.Algorithm)
-    db = Dataset_annot("sick")
-    db.load_sick()
-    db.norm_scores()
-    print("Results for SICK dataset:")
-    for i in range(len(standard)):
-        print(standard[i].name + " correlation: " +
-              str(db.run_alg(standard[i])))
-    for i in range(len(algorithms)):
-        print(algorithms[i].name + " correlation: " +
-              str(db.run_alg(algorithms[i])))
+        algorithms = util.path_import(args.path)
+        algorithms = util.inheritors(algorithms.Algorithm)
+        length = lenght(algorithms)
+    else:
+        length = 0
+    standard = util.inheritors(algs.Algorithm)
     db2 = Dataset_annot("sts")
     db2.load_sts()
     db2.norm_scores()
     print("Results for STS dataset:")
     for i in range(len(standard)):
         print(standard[i].name + " correlation: " +
-              str(db2.run_alg(standard[i])))
-    for i in range(len(algorithms)):
+              str(db2.compare(pearsonr,standard[i])))
+    for i in range(length):
         print(algorithms[i].name + " correlation: " +
-              str(db2.run_alg(algorithms[i])))
-
-
-def path_import(absolute_path):
-    """implementation taken from https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly"""
-    spec = importlib.util.spec_from_file_location(absolute_path, absolute_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def inheritors(klass):
-    """Implementation based on https://stackoverflow.com/questions/5881873/python-find-all-classes-which-inherit-from-this-one"""
-    subclasses = set()
-    work = [klass]
-    while work:
-        parent = work.pop()
-        for child in parent.__subclasses__():
-            if child not in subclasses:
-                init = child()
-                subclasses.add(init)
-                work.append(child)
-    return list(subclasses)
+              str(db2.run_alg(pearsonr,algorithms[i])))
+    db = Dataset_annot("sick")
+    db.load_sick()
+    db.norm_scores()
+    print("Results for SICK dataset:")
+    for i in range(len(standard)):
+        standard[i].train(db)
+        print(standard[i].name + " correlation: " +
+              str(db.compare(pearsonr,standard[i])))
+    for i in range(length):
+        algorithms[i].train(db)
+        print(algorithms[i].name + " correlation: " +
+              str(db.compare(pearsonr,algorithms[i])))
 
 
 if __name__ == "__main__":
