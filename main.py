@@ -28,9 +28,9 @@ class Dataset:
 
     def load_data(self, path):
         """Loads a list of strings."""
-        f = open(path, "r")
-        for line in f.readlines():
-            self.data[0].append(line)
+        with open(path, "r") as f:
+            for line in f.readlines():
+                self.data[0].append(line)
 
 
 class Dataset_annot(Dataset):
