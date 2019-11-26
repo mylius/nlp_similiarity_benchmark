@@ -65,20 +65,16 @@ class BagOfWords(Algorithm):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
         words = np.array(re.sub(r'\W+', ' ', in_line).split(" "))
         count = defaultdict(int)
-        result = OrderedDict()
         for token in words:
             count[token] += 1
-        for key, value in count.items():
-            if key in self.dictionary:
-                result[self.dictionary[key]] = value
-        result = OrderedDict(sorted(result.items()))
         col = []
         row = []
         data = []
-        for key, value in result.items():
-            data.append(value)
-            col.append(key)
-            row.append(0)
+        for key, value in count.items():
+            if key in self.dictionary:
+                data.append(value)
+                col.append(self.dictionary[key])
+                row.append(0)
         return sparse.csr_matrix((data, (row, col)), shape=(1, len(self.dictionary)))
 
 
@@ -116,22 +112,18 @@ class BagOfWords_lemma(BagOfWords):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
         words = self.nlp(str(in_line), disable=self.disable)
         count = defaultdict(int)
-        result = OrderedDict()
         # Using counter proofed unsucessfull since it bypasses lemmatization
         for token in words:
             if not token.is_stop:
                 count[token.lemma_] += 1
-        for key, value in count.items():
-            if key in self.dictionary:
-                result[self.dictionary[key]] = value
-        result = OrderedDict(sorted(result.items()))
         col = []
         row = []
         data = []
-        for key, value in result.items():
-            data.append(value)
-            col.append(key)
-            row.append(0)
+        for key, value in count.items():
+            if key in self.dictionary:
+                data.append(value)
+                col.append(self.dictionary[key])
+                row.append(0)
         return sparse.csr_matrix((data, (row, col)), shape=(1, len(self.dictionary)))
 
 
@@ -146,7 +138,7 @@ class spacy_sem_sim(Algorithm):
             self.nlp = spacy.load("de_core_news_md")
 
     def compare(self, a, b):
-        """Returns the cosine similarity between two matrives a,b."""
+        """Returns the cosine similarity between two matrices a,b."""
         return a.similarity(b)
 
     def create_vec(self, in_line):
