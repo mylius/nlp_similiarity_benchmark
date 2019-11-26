@@ -15,7 +15,7 @@ class Algorithm:
         self.name = name
         self.language = language
 
-    def train(self, input):
+    def train(self, in_dataset):
         pass
 
     def compare(self, a, b):
@@ -36,11 +36,11 @@ class BagOfWords(Algorithm):
         if self.language == "german":
             self.nlp = spacy.load("de_core_news_sm")
 
-    def train(self, input):
+    def train(self, in_dataset):
         """Creates a dictionary of occuring words for a given dataset."""
         print("Training " + self.name)
         data = []
-        for sets in input:
+        for sets in in_dataset:
             for item in sets:
                 data += re.sub(r'\W+', ' ', item).split(" ")
         data, self.weights = np.unique(data, return_counts=True)
@@ -56,9 +56,9 @@ class BagOfWords(Algorithm):
         for token in data:
             dict.append(token.lemma_)
 
-    def create_vec(self, input):
+    def create_vec(self, in_line):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
-        words = np.array(re.sub(r'\W+', ' ', input).split(" "))
+        words = np.array(re.sub(r'\W+', ' ', in_line).split(" "))
         count = defaultdict(int)
         result = OrderedDict()
         for token in words:
@@ -82,11 +82,11 @@ class BagOfWords_lemma(BagOfWords):
     def __init__(self, name="BagOfWords Lemmatized", disable=["ner"], language="english",):
         super().__init__(name, language)
 
-    def train(self, input, stop=True):
+    def train(self, in_dataset, stop=True):
         """Creates a dictionary of occuring words for a given dataset."""
         print("Training " + self.name)
         data = ''
-        for sets in input:
+        for sets in in_dataset:
             for item in sets:
                 data = data + item + " "
         doc = self.nlp(data, disable=self.disable)
@@ -107,9 +107,9 @@ class BagOfWords_lemma(BagOfWords):
         for token in data:
             dict.append(token.lemma_)
 
-    def create_vec(self, input):
+    def create_vec(self, in_line):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
-        words = self.nlp(str(input), disable=self.disable)
+        words = self.nlp(str(in_line), disable=self.disable)
         count = defaultdict(int)
         result = OrderedDict()
         #Using counter proofed unsucessfull since it bypasses lemmatization
