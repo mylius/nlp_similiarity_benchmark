@@ -58,8 +58,9 @@ class Dataset_annot(Dataset):
     def load_sick(self):
         """Loads the SICK dataset."""
         self.load("./data/SICK_train.txt", [1, 2],
-             self.train_data, 3, self.train_score)
-        self.load("./data/SICK.txt",[1, 2], self.test_data, 4, self.test_score)
+                  self.train_data, 3, self.train_score)
+        self.load("./data/SICK.txt", [1, 2],
+                  self.test_data, 4, self.test_score)
 
     """def load_sts(self):
         #Loads the STS dataset.
@@ -74,7 +75,6 @@ class Dataset_annot(Dataset):
         self.train_norm_score = preprocessing.minmax_scale(self.train_score)
         self.test_norm_score = preprocessing.minmax_scale(self.test_score)
 
-
     def calc_vecs(self, alg):
         """Precalculates the vectors and stores them in memory."""
         if not alg.trained:
@@ -85,7 +85,6 @@ class Dataset_annot(Dataset):
             self.phrase_vecs[alg][0].append(alg.create_vec(item))
         for item in self.test_data[1]:
             self.phrase_vecs[alg][1].append(alg.create_vec(item))
-
 
     def calc_cosine(self, alg):
         """Runs a given algorithm and returns the difference to the ground truth."""
@@ -103,36 +102,46 @@ class Dataset_annot(Dataset):
             results.append(res)
         self.cosine[alg] = results
 
-
     def compare(self, function, alg):
         if alg not in self.cosine:
             self.calc_cosine(alg)
         return function(self.cosine[alg], self.test_norm_score)
 
 
-def benchmark():
-    standard = util.inheritors(algs.Algorithm)
+def benchmark(algorithms):
     """db2 = Dataset_annot("sts")
     db2.load_sts()
     db2.norm_scores()
     print("Results for STS dataset:")
-    for i in range(len(standard)):
-        print(standard[i].name + " correlation: " +
-              str(db2.compare(pearsonr, standard[i])))"""
+    for i in range(len(algorithms)):
+        print(algorithms[i].name + " correlation: " +
+              str(db2.compare(pearsonr, algorithms[i])))"""
     db = Dataset_annot("sick")
     db.load_sick()
     db.norm_scores()
     print("Results for SICK dataset:")
-    for i in range(len(standard)):
-        standard[i].train(db.train_data)
-        print(standard[i].name + " correlation: " +
-              str(db.compare(pearsonr, standard[i])))
+    for i in range(len(algorithms)):
+        algorithms[i].train(db.train_data)
+        print(algorithms[i].name + " correlation: " +
+              str(db.compare(pearsonr, algorithms[i])))
+
+
+def create_alg_list(in_list):
+    alg_list = []
+    in_list = list(in_list)
+    Algorithms = {}
+    Algorithms["bow"] = algs.BagOfWords
+    Algorithms["bow_l"] = algs.BagOfWords_lemma
+    for alg in in_list:
+        if alg in Algorithms:
+            alg_list.append(Algorithms[alg]())
+    return alg_list
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Benchmarks Semantic Similiarty Benchmarks")
-    parser.add_argument("path", metavar="path", type=str, nargs='?',
-                        help="The path to a *.py with algorithms to benchmark. The Algorithms need to inherit from the Algorithm class.")
+    parser.add_argument("algs", metavar="algs", type=str, nargs='+',
+                        help="Choose which Algorithms to run buy passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation")
     args = parser.parse_args()
-    benchmark()
+    benchmark(create_alg_list(args.algs))
