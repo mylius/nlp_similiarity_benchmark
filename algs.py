@@ -3,9 +3,10 @@ import spacy
 import numpy as np
 from sklearn import preprocessing
 from scipy import sparse
-from util import multithread_shared_object
 from sklearn.metrics.pairwise import cosine_similarity
-
+from collections import OrderedDict
+from collections import defaultdict
+from collections import Counter
 
 class Algorithm:
 
@@ -14,7 +15,7 @@ class Algorithm:
         self.name = name
         self.language = language
 
-    def train(self):
+    def train(self, input):
         pass
 
     def compare(self, a, b):
@@ -27,7 +28,7 @@ class BagOfWords(Algorithm):
 
     def __init__(self, name="BagOfWords simple language agnostic", disable=["ner"], language="english"):
         super().__init__(name, language)
-        self.dict = []
+        self.dictionary = {}
         self.weights = []
         self.disable = disable
         if self.language == "english":
@@ -35,51 +36,51 @@ class BagOfWords(Algorithm):
         if self.language == "german":
             self.nlp = spacy.load("de_core_news_sm")
 
-
     def train(self, input):
         """Creates a dictionary of occuring words for a given dataset."""
         print("Training " + self.name)
         data = []
         for sets in input:
             for item in sets:
-                data+=re.sub(r'\W+', ' ', item).split(" ")
-        self.dict, self.weights = np.unique(data, return_counts=True)
-        self.remove_stopwords()
+                data += re.sub(r'\W+', ' ', item).split(" ")
+        data, self.weights = np.unique(data, return_counts=True)
+        index = 0
+        for value in data:
+            self.dictionary[value] = index
+            index += 1
         self.weights = sparse.csr_matrix(
             preprocessing.minmax_scale(self.weights))
         self.trained = True
-
-
-    def remove_stopwords(self):
-        if self.language == "german":
-            stopwords = spacy.lang.de.stop_words.STOP_WORDS
-        if self.language == "english":
-            stopwords = spacy.lang.en.stop_words.STOP_WORDS
-        self.dict = [
-            token for token in self.dict if not token in stopwords]
 
     def append_dic(self, data, dict, i):
         for token in data:
             dict.append(token.lemma_)
 
-    def create_vec(self, data, result, i):
+    def create_vec(self, input):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
-        for j in range(len(data)):
-            #print("seg: "+ str(i) +" row: " + str(j))
-            words = np.array(re.sub(r'\W+', ' ', data[j]).split(" "))
-            count = np.zeros(len(self.dict))
-            for token in words:
-                #print((self.dict==bytes(token.lemma_, 'utf-8')).tostring().find('\x01'))
-                count[np.where(np.array(self.dict) == token)] += 1
-            # print(sparse.csr_matrix(count).shape)
-            result[i*len(data)+j] = (sparse.csr_matrix(count))
+        words = np.array(re.sub(r'\W+', ' ', input).split(" "))
+        count = defaultdict(int)
+        result = OrderedDict()
+        for token in words:
+            count[token] += 1
+        for key, value in count.items():
+            if key in self.dictionary:
+                result[self.dictionary[key]] = value
+        result = OrderedDict(sorted(result.items()))
+        col = []
+        row = []
+        data = []
+        for key, value in result.items():
+            data.append(value)
+            col.append(key)
+            row.append(0)
+        return sparse.csr_matrix((data, (row, col)), shape=(1, len(self.dictionary)))
 
 
 class BagOfWords_lemma(BagOfWords):
 
     def __init__(self, name="BagOfWords Lemmatized", disable=["ner"], language="english",):
         super().__init__(name, language)
-
 
     def train(self, input, stop=True):
         """Creates a dictionary of occuring words for a given dataset."""
@@ -89,10 +90,15 @@ class BagOfWords_lemma(BagOfWords):
             for item in sets:
                 data = data + item + " "
         doc = self.nlp(data, disable=self.disable)
-        self.dict = multithread_shared_object(self.append_dic, "list", doc)
-        if stop:
-            self.remove_stopwords()
-        self.dict, self.weights = np.unique(self.dict, return_counts=True)
+        data = []
+        for item in doc:
+            if not item.is_stop:
+                data.append(item.lemma_)
+        data, self.weights = np.unique(data, return_counts=True)
+        index = 0
+        for value in data:
+            self.dictionary[value] = index
+            index += 1
         self.weights = sparse.csr_matrix(
             preprocessing.minmax_scale(self.weights))
         self.trained = True
@@ -101,11 +107,26 @@ class BagOfWords_lemma(BagOfWords):
         for token in data:
             dict.append(token.lemma_)
 
-    def create_vec(self, data, result, i):
+    def create_vec(self, input):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
-        for j in range(len(data)):
-            words = self.nlp(str(data[j]))
-            count = np.zeros(len(self.dict))
-            for token in words:
-                count[np.where(np.array(self.dict) == token.lemma_)] += 1
-            result[i*len(data)+j] = (sparse.csr_matrix(count))
+        words = self.nlp(str(input), disable=self.disable)
+        count = defaultdict(int)
+        result = OrderedDict()
+        #Using counter proofed unsucessfull since it bypasses lemmatization
+        for token in words:
+            if not token.is_stop:
+                count[token.lemma_] += 1
+        for key, value in count.items():
+            if key in self.dictionary:
+                result[self.dictionary[key]] = value
+        result = OrderedDict(sorted(result.items()))
+        col = []
+        row = []
+        data = []
+        for key, value in result.items():
+            data.append(value)
+            col.append(key)
+            row.append(0)
+        return sparse.csr_matrix((data, (row, col)), shape=(1, len(self.dictionary)))
+
+    

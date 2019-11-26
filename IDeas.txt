@@ -26,3 +26,11 @@ SPacy komponenten ausschalten: named_entity_recognition
 -Überprüfen ob Vergleich das gleiche Ergebnis ausgibt wie die offizielle Dokumentation. Alle drei 
 -Gucken 
 -Command line interace einrichten. arg-parse verwenden
+
+
+
+-collections counter(liste)
+-dictionary für dict dict[word] = index
+-script Evaluation testen
+
+-dictionary instanziert algorithmen
