@@ -8,6 +8,7 @@ from collections import OrderedDict
 from collections import defaultdict
 from collections import Counter
 
+
 class Algorithm:
 
     def __init__(self, name, language="english",):
@@ -16,6 +17,10 @@ class Algorithm:
         self.language = language
 
     def train(self, in_dataset):
+        pass
+
+    def create_vec(self, in_line):
+        """Returns a matrix denoting which words from the dictionary occure in a given line."""
         pass
 
     def compare(self, a, b):
@@ -112,7 +117,7 @@ class BagOfWords_lemma(BagOfWords):
         words = self.nlp(str(in_line), disable=self.disable)
         count = defaultdict(int)
         result = OrderedDict()
-        #Using counter proofed unsucessfull since it bypasses lemmatization
+        # Using counter proofed unsucessfull since it bypasses lemmatization
         for token in words:
             if not token.is_stop:
                 count[token.lemma_] += 1
@@ -129,4 +134,21 @@ class BagOfWords_lemma(BagOfWords):
             row.append(0)
         return sparse.csr_matrix((data, (row, col)), shape=(1, len(self.dictionary)))
 
-    
+
+class spacy_sem_sim(Algorithm):
+
+    def __init__(self, name="spacy", language="english"):
+        super().__init__(name, language)
+        print("Loading model")
+        if self.language == "english":
+            self.nlp = spacy.load("en_core_web_md")
+        if self.language == "german":
+            self.nlp = spacy.load("de_core_news_md")
+
+    def compare(self, a, b):
+        """Returns the cosine similarity between two matrives a,b."""
+        return a.similarity(b)
+
+    def create_vec(self, in_line):
+        """Returns a matrix denoting which words from the dictionary occure in a given line."""
+        return self.nlp(in_line)

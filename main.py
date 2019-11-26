@@ -132,6 +132,7 @@ def create_alg_list(in_list):
     Algorithms = {}
     Algorithms["bow"] = algs.BagOfWords
     Algorithms["bow_l"] = algs.BagOfWords_lemma
+    Algorithms["spacy"] = algs.spacy_sem_sim
     for alg in in_list:
         if alg in Algorithms:
             alg_list.append(Algorithms[alg]())
