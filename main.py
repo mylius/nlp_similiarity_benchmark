@@ -114,16 +114,15 @@ def benchmark(algorithms):
     db2.norm_scores()
     print("Results for STS dataset:")
     for i in range(len(algorithms)):
-        print(algorithms[i].name + " correlation: " +
-              str(db2.compare(pearsonr, algorithms[i])))"""
+        print("{} correlation: {}".format(algorithms[i].name,db.compare(pearsonr, algorithms[i])))"""
     db = Dataset_annot("sick")
     db.load_sick()
     db.norm_scores()
     print("Results for SICK dataset:")
     for i in range(len(algorithms)):
         algorithms[i].train(db.train_data)
-        print(algorithms[i].name + " correlation: " +
-              str(db.compare(pearsonr, algorithms[i])))
+        print("{} correlation: {}".format(
+            algorithms[i].name, db.compare(pearsonr, algorithms[i])))
 
 
 def create_alg_list(in_list):

@@ -43,7 +43,7 @@ class BagOfWords(Algorithm):
 
     def train(self, in_dataset):
         """Creates a dictionary of occuring words for a given dataset."""
-        print("Training " + self.name)
+        print("Training  {}".format(self.name))
         data = []
         for sets in in_dataset:
             for item in sets:
@@ -85,7 +85,7 @@ class BagOfWords_lemma(BagOfWords):
 
     def train(self, in_dataset, stop=True):
         """Creates a dictionary of occuring words for a given dataset."""
-        print("Training " + self.name)
+        print("Training {}".format(self.name))
         data = ''
         for sets in in_dataset:
             for item in sets:
@@ -129,13 +129,13 @@ class BagOfWords_lemma(BagOfWords):
 
 class spacy_sem_sim(Algorithm):
 
-    def __init__(self, name="spacy", language="english"):
+    def __init__(self, name="spacy", language="english", model = "md"):
         super().__init__(name, language)
         print("Loading model")
         if self.language == "english":
-            self.nlp = spacy.load("en_core_web_md")
+            self.nlp = spacy.load("en_core_web_{}".format(model))
         if self.language == "german":
-            self.nlp = spacy.load("de_core_news_md")
+            self.nlp = spacy.load("de_core_news_{}".format(model))
 
     def compare(self, a, b):
         """Returns the cosine similarity between two matrices a,b."""
