@@ -17,11 +17,11 @@ class Algorithm:
         self.language = language
 
     def train(self, in_dataset):
-        pass
+        raise NotImplementedError("Train method not implemented")
 
     def create_vec(self, in_line):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
-        pass
+        raise NotImplementedError("Create_vec method not implemented")
 
     def compare(self, a, b):
         """Returns the cosine similarity between two matrives a,b.
@@ -38,8 +38,10 @@ class BagOfWords(Algorithm):
         self.disable = disable
         if self.language == "english":
             self.nlp = spacy.load("en_core_web_sm")
-        if self.language == "german":
+        elif self.language == "german":
             self.nlp = spacy.load("de_core_news_sm")
+        else:
+            raise ValueError("Unsupported language")
 
     def train(self, in_dataset):
         """Creates a dictionary of occuring words for a given dataset."""
@@ -56,10 +58,6 @@ class BagOfWords(Algorithm):
         self.weights = sparse.csr_matrix(
             preprocessing.minmax_scale(self.weights))
         self.trained = True
-
-    def append_dic(self, data, dict, i):
-        for token in data:
-            dict.append(token.lemma_)
 
     def create_vec(self, in_line):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
@@ -104,10 +102,6 @@ class BagOfWords_lemma(BagOfWords):
             preprocessing.minmax_scale(self.weights))
         self.trained = True
 
-    def append_dic(self, data, dict, i):
-        for token in data:
-            dict.append(token.lemma_)
-
     def create_vec(self, in_line):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
         words = self.nlp(str(in_line), disable=self.disable)
@@ -134,8 +128,10 @@ class spacy_sem_sim(Algorithm):
         print("Loading model")
         if self.language == "english":
             self.nlp = spacy.load("en_core_web_{}".format(model))
-        if self.language == "german":
+        elif self.language == "german":
             self.nlp = spacy.load("de_core_news_{}".format(model))
+        else:
+            raise ValueError("Unsupported language")
 
     def compare(self, a, b):
         """Returns the cosine similarity between two matrices a,b."""
