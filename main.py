@@ -8,6 +8,7 @@ import algs
 import util
 from collections import OrderedDict
 
+
 class Dataset:
     def __init__(self, name):
         self.name = name
@@ -62,11 +63,26 @@ class Dataset_annot(Dataset):
         self.load("./data/SICK.txt", [1, 2],
                   self.test_data, 4, self.test_score)
 
-    """def load_sts(self):
-        #Loads the STS dataset.
-        self.load("./data/sts_trial/SICK_train.txt", [1, 2],
-             self.train_data, 3, self.train_score)
-        self.load("./data/SICK.txt",[1, 2], self.test_data, 4, self.test_score)"""
+    def load_sts(self):
+        # Loads the STS dataset.
+        f = open("./data/sts_test/raw.txt")
+        raw = f.read().split("\n")
+        data = open("./data/sts_test/gs.txt")
+        gs = data.read().split("\n")
+        f.close()
+        data.close()
+        for line in range(len(gs)):
+            if gs[line] != "\n" and gs[line] != "":
+                self.test_data[0].append(raw[line].split("\t")[0])
+                self.test_data[1].append(raw[line].split("\t")[1])
+                self.test_score.append(float(gs[line]))
+        with open("./data/sts_train/raw.txt") as data:
+            for line in data:
+                self.train_data[0].append(line.split("\t")[0])
+                self.train_data[1].append(line.split("\t")[1])
+        with open("./data/sts_train/gs.txt") as data:
+            for line in data:
+                self.train_score.append(float(line))
 
     def norm_scores(self):
         """Creates lists of normed scores."""
@@ -109,12 +125,15 @@ class Dataset_annot(Dataset):
 
 
 def benchmark(algorithms):
-    """db2 = Dataset_annot("sts")
+    db2 = Dataset_annot("sts")
     db2.load_sts()
     db2.norm_scores()
     print("Results for STS dataset:")
     for i in range(len(algorithms)):
-        print("{} correlation: {}".format(algorithms[i].name,db.compare(pearsonr, algorithms[i])))"""
+        print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
+            algorithms[i].name, db2.compare(pearsonr, algorithms[i]),
+            db2.compare(spearmanr, algorithms[i]),
+            db2.compare(mean_squared_error, algorithms[i])))
     db = Dataset_annot("sick")
     db.load_sick()
     db.norm_scores()
