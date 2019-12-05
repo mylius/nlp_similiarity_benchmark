@@ -6,7 +6,7 @@ from sklearn import preprocessing
 import argparse
 import algs
 import util
-
+from collections import OrderedDict
 
 class Dataset:
     def __init__(self, name):
@@ -69,7 +69,7 @@ class Dataset_annot(Dataset):
         self.load("./data/SICK.txt",[1, 2], self.test_data, 4, self.test_score)"""
 
     def norm_scores(self):
-        """Creates a list of normed scores."""
+        """Creates lists of normed scores."""
         self.train_norm_score = []
         self.test_norm_score = []
         self.train_norm_score = preprocessing.minmax_scale(self.train_score)
@@ -127,13 +127,17 @@ def benchmark(algorithms):
 
 def create_alg_list(in_list):
     alg_list = []
-    in_list = list(in_list)
-    Algorithms = {}
+    Algorithms = OrderedDict()
     Algorithms["bow"] = algs.BagOfWords
     Algorithms["bow_l"] = algs.BagOfWords_lemma
     Algorithms["spacy"] = algs.spacy_sem_sim
-    for alg in in_list:
-        if alg in Algorithms:
+    if in_list != None:
+        in_list = in_list.split(",")
+        for alg in in_list:
+            if alg in Algorithms:
+                alg_list.append(Algorithms[alg]())
+    else:
+        for alg in Algorithms:
             alg_list.append(Algorithms[alg]())
     return alg_list
 
@@ -141,7 +145,7 @@ def create_alg_list(in_list):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Benchmarks Semantic Similiarty Benchmarks")
-    parser.add_argument("algs", metavar="algs", type=str, nargs='+',
-                        help="Choose which Algorithms to run buy passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation")
+    parser.add_argument("algs", metavar="algs", type=str, nargs='?',
+                        help="Choose which Algorithms to run buy passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation",)
     args = parser.parse_args()
     benchmark(create_alg_list(args.algs))

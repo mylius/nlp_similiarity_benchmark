@@ -125,7 +125,7 @@ class spacy_sem_sim(Algorithm):
 
     def __init__(self, name="spacy", language="english", model = "md"):
         super().__init__(name, language)
-        print("Loading model")
+        print("Initializing spacy model")
         if self.language == "english":
             self.nlp = spacy.load("en_core_web_{}".format(model))
         elif self.language == "german":
@@ -140,3 +140,6 @@ class spacy_sem_sim(Algorithm):
     def create_vec(self, in_line):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
         return self.nlp(in_line)
+    
+    def train(self,in_dataset):
+        pass
