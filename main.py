@@ -121,8 +121,10 @@ def benchmark(algorithms):
     print("Results for SICK dataset:")
     for i in range(len(algorithms)):
         algorithms[i].train(db.train_data)
-        print("{} correlation: {}".format(
-            algorithms[i].name, db.compare(pearsonr, algorithms[i])))
+        print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
+            algorithms[i].name, db.compare(pearsonr, algorithms[i]),
+            db.compare(spearmanr, algorithms[i]),
+            db.compare(mean_squared_error, algorithms[i])))
 
 
 def create_alg_list(in_list):
