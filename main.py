@@ -147,7 +147,7 @@ def benchmark(algorithms):
         print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
             algorithms[i].name, db2.compare(pearsonr, algorithms[i]),
             db2.compare(spearmanr, algorithms[i]),
-            db2.compare(util.mse, algorithms[i])))
+            db2.compare(mean_squared_error, algorithms[i])))
 
     db = Dataset_annot("sick")
     db.load_sick()
@@ -158,7 +158,7 @@ def benchmark(algorithms):
         print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
             algorithms[i].name, db.compare(pearsonr, algorithms[i]),
             db.compare(spearmanr, algorithms[i]),
-            db.compare(util.mse, algorithms[i])))
+            db.compare(mean_squared_error, algorithms[i])))
 
 
 def create_alg_list(in_list):
