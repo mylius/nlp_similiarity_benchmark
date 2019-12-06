@@ -7,6 +7,8 @@ import argparse
 import algs
 import util
 from collections import OrderedDict
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics import jaccard_similarity_score
 
 
 class Dataset:
@@ -41,12 +43,14 @@ class Dataset_annot(Dataset):
         self.test_data = [[], []]
         self.train_score = []
         self.test_score = []
-        self.cosine = {}
+        self.train_ids = []
+        self.test_ids = []
+        self.results = {}
         self.phrase_vecs = {}
 
-    def load(self, path, data_rows, data, score_row, scores):
-        i = 0
+    def load(self, path, data_rows, data, score_row, scores, id_row=None, ids=None):
         with open(path, "r") as f:
+            next(f)
             for line in f.readlines():
                 line = line.split("\t")
                 j = 0
@@ -54,14 +58,16 @@ class Dataset_annot(Dataset):
                     data[j].append(line[row])
                     j += 1
                 scores.append((line[score_row]))
-                i += 1
+                if id_row != None:
+                    ids.append(line[id_row])
 
     def load_sick(self):
         """Loads the SICK dataset."""
         self.load("./data/SICK_train.txt", [1, 2],
-                  self.train_data, 3, self.train_score)
+                  self.train_data, 3, self.train_score, 0, self.train_ids)
         self.load("./data/SICK.txt", [1, 2],
-                  self.test_data, 4, self.test_score)
+                  self.test_data, 3, self.test_score, 0, self.test_ids)
+        self.sick = True
 
     def load_sts(self):
         # Loads the STS dataset.
@@ -102,11 +108,10 @@ class Dataset_annot(Dataset):
         for item in self.test_data[1]:
             self.phrase_vecs[alg][1].append(alg.create_vec(item))
 
-    def calc_cosine(self, alg):
+    def calc_results(self, alg, func):
         """Runs a given algorithm and returns the difference to the ground truth."""
         results = []
         if not alg.trained:
-            print("Training...")
             alg.train(self.train_data)
         if alg in self.phrase_vecs:
             data = self.phrase_vecs[alg]
@@ -114,14 +119,23 @@ class Dataset_annot(Dataset):
             self.calc_vecs(alg)
         for i in range(len(self.test_data[0])):
             res = float(alg.compare(
-                self.phrase_vecs[alg][0][i], self.phrase_vecs[alg][1][i]))
+                self.phrase_vecs[alg][0][i], self.phrase_vecs[alg][1][i], func))
             results.append(res)
-        self.cosine[alg] = results
+        self.results[alg] = results
 
-    def compare(self, function, alg):
-        if alg not in self.cosine:
-            self.calc_cosine(alg)
-        return function(self.cosine[alg], self.test_norm_score)
+    def compare(self, function, alg, comp_meas=cosine_similarity):
+        if alg not in self.results:
+            self.calc_results(alg, comp_meas)
+        return function(self.results[alg], self.test_norm_score)
+
+    def output_sick(self, function, alg):
+        if self.sick:
+            with open("./data/results_SICK_{}".format(alg.name), "w+") as data:
+                output = "pair_ID \t entailment_judgment \t relatedness_score\n"
+                for i in range(len(self.results[alg])):
+                    output += "{} \t NA \t {}\n".format(
+                        self.test_ids[i], self.results[alg][i]*4+1)
+                data.write(output)
 
 
 def benchmark(algorithms):
@@ -133,7 +147,8 @@ def benchmark(algorithms):
         print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
             algorithms[i].name, db2.compare(pearsonr, algorithms[i]),
             db2.compare(spearmanr, algorithms[i]),
-            db2.compare(mean_squared_error, algorithms[i])))
+            db2.compare(util.mse, algorithms[i])))
+
     db = Dataset_annot("sick")
     db.load_sick()
     db.norm_scores()
@@ -143,7 +158,7 @@ def benchmark(algorithms):
         print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
             algorithms[i].name, db.compare(pearsonr, algorithms[i]),
             db.compare(spearmanr, algorithms[i]),
-            db.compare(mean_squared_error, algorithms[i])))
+            db.compare(util.mse, algorithms[i])))
 
 
 def create_alg_list(in_list):
