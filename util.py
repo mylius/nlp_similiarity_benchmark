@@ -2,7 +2,7 @@ import os
 from multiprocessing import Pool, Process, Manager
 import numpy as np
 import importlib
-
+import time
 
 
 def inheritors(klass):
@@ -17,3 +17,10 @@ def inheritors(klass):
                 subclasses.add(init)
                 work.append(child)
     return list(subclasses)
+
+def measure_time(string, func, *args):
+    starttime = time.time()
+    result = func(*args)
+    endtime = time.time()
+    print("{}: {}s".format(string,endtime-starttime))
+    return result

@@ -9,6 +9,7 @@ import util
 from collections import OrderedDict
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import jaccard_similarity_score
+import time
 
 
 class Dataset:
@@ -130,21 +131,28 @@ def benchmark(algorithms):
     db2.norm_scores()
     print("Results for STS dataset:")
     for i in range(len(algorithms)):
+        util.measure_time("Traintime",algorithms[i].train,db2.train_data)
+        starttime = time.time()
         print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
             algorithms[i].name, db2.compare(pearsonr, algorithms[i]),
             db2.compare(spearmanr, algorithms[i]),
             db2.compare(mean_squared_error, algorithms[i])))
+        endtime = time.time()
+        print("Runtime: {}s".format(endtime-starttime))
 
     db = Dataset_annot("sick")
     db.load_sick()
     db.norm_scores()
     print("Results for SICK dataset:")
     for i in range(len(algorithms)):
-        algorithms[i].train(db.train_data)
+        util.measure_time("Traintime",algorithms[i].train,db.train_data)
+        starttime = time.time()
         print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
             algorithms[i].name, db.compare(pearsonr, algorithms[i]),
             db.compare(spearmanr, algorithms[i]),
             db.compare(mean_squared_error, algorithms[i])))
+        endtime = time.time()
+        print("Runtime: {}s".format(endtime-starttime))
 
 
 def create_alg_list(in_list):
@@ -152,7 +160,8 @@ def create_alg_list(in_list):
     Algorithms = OrderedDict()
     Algorithms["bow"] = algs.BagOfWords
     Algorithms["bow_l"] = algs.BagOfWords_lemma
-    Algorithms["spacy"] = algs.spacy_sem_sim
+    Algorithms["spacy_w2v"] = algs.spacy_sem_sim
+    Algorithms["spacy_bert"] = algs.spacy_bert
     if in_list != None:
         in_list = in_list.split(",")
         for alg in in_list:

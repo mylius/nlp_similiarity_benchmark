@@ -1,3 +1,4 @@
+from sklearn.metrics.pairwise import cosine_similarity
 import re
 import spacy
 import numpy as np
@@ -8,8 +9,7 @@ from collections import defaultdict
 from collections import Counter
 import warnings
 from sklearn.utils.validation import DataConversionWarning
-warnings.filterwarnings("ignore",category=DataConversionWarning)
-from sklearn.metrics.pairwise import cosine_similarity
+warnings.filterwarnings("ignore", category=DataConversionWarning)
 
 
 class Algorithm:
@@ -82,7 +82,7 @@ class BagOfWords(Algorithm):
 
 class BagOfWords_lemma(BagOfWords):
 
-    def __init__(self, name="BagOfWords Lemmatized", disable=["ner"], language="english",stop=True):
+    def __init__(self, name="BagOfWords Lemmatized", disable=["ner"], language="english", stop=True):
         super().__init__(name, language)
 
     def train(self, in_dataset, stop=True):
@@ -127,15 +127,9 @@ class BagOfWords_lemma(BagOfWords):
 
 class spacy_sem_sim(Algorithm):
 
-    def __init__(self, name="spacy", language="english", model = "md"):
+    def __init__(self, name="spacy", language="english", model="md"):
         super().__init__(name, language)
-        print("Initializing spacy model")
-        if self.language == "english":
-            self.nlp = spacy.load("en_core_web_{}".format(model))
-        elif self.language == "german":
-            self.nlp = spacy.load("de_core_news_{}".format(model))
-        else:
-            raise ValueError("Unsupported language")
+        self.model = model
 
     def compare(self, a, b, func):
         """Returns the cosine similarity between two matrices a,b."""
@@ -144,22 +138,23 @@ class spacy_sem_sim(Algorithm):
     def create_vec(self, in_line):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
         return self.nlp(in_line)
-    
-    def train(self,in_dataset):
-        pass
+
+    def train(self, in_dataset):
+        print("Initializing spacy model")
+        if self.language == "english":
+            self.nlp = spacy.load("en_core_web_{}".format(self.model))
+        elif self.language == "german":
+            self.nlp = spacy.load("de_core_news_{}".format(self.model))
+        else:
+            raise ValueError("Unsupported language")
+
 
 class spacy_bert(Algorithm):
 
-    def __init__(self, name="spacy", language="english", model = "lg"):
+    def __init__(self, name="spacy", language="english", model="lg"):
         super().__init__(name, language)
-        print("Initializing spacy model")
-        if self.language == "english":
-            self.nlp = spacy.load("en_trf_bertbaseuncased_{}".format(model))
-        elif self.language == "german":
-            self.nlp = spacy.load("en_trf_bertbaseuncased_lg{}".format(model))
-        else:
-            raise ValueError("Unsupported language")
-    
+        self.model = model
+
     def compare(self, a, b, func):
         """Returns the cosine similarity between two matrices a,b."""
         return a.similarity(b)
@@ -167,6 +162,14 @@ class spacy_bert(Algorithm):
     def create_vec(self, in_line):
         """Returns a matrix denoting which words from the dictionary occure in a given line."""
         return self.nlp(in_line)
-    
-    def train(self,in_dataset):
-        pass
+
+    def train(self, in_dataset):
+        print("Initializing spacy model")
+        if self.language == "english":
+            self.nlp = spacy.load(
+                "en_trf_bertbaseuncased_{}".format(self.model))
+        elif self.language == "german":
+            self.nlp = spacy.load(
+                "en_trf_bertbaseuncased_lg{}".format(self.model))
+        else:
+            raise ValueError("Unsupported language")
