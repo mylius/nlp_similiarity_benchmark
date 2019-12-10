@@ -34,3 +34,6 @@ SPacy komponenten ausschalten: named_entity_recognition
 -script Evaluation testen
 
 -dictionary instanziert algorithmen
+
+-Bert (spacy transformer)
+-LRU for caching training

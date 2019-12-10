@@ -71,24 +71,10 @@ class Dataset_annot(Dataset):
 
     def load_sts(self):
         # Loads the STS dataset.
-        f = open("./data/sts_test/raw.txt")
-        raw = f.read().split("\n")
-        data = open("./data/sts_test/gs.txt")
-        gs = data.read().split("\n")
-        f.close()
-        data.close()
-        for line in range(len(gs)):
-            if gs[line] != "\n" and gs[line] != "":
-                self.test_data[0].append(raw[line].split("\t")[0])
-                self.test_data[1].append(raw[line].split("\t")[1])
-                self.test_score.append(float(gs[line]))
-        with open("./data/sts_train/raw.txt") as data:
-            for line in data:
-                self.train_data[0].append(line.split("\t")[0])
-                self.train_data[1].append(line.split("\t")[1])
-        with open("./data/sts_train/gs.txt") as data:
-            for line in data:
-                self.train_score.append(float(line))
+        self.load("./data/sts_train/raw_gs.txt", [1, 2],
+                  self.train_data, 0, self.train_score)
+        self.load("./data/sts_test/raw_gs.txt", [1, 2],
+                  self.test_data, 0, self.test_score)
 
     def norm_scores(self):
         """Creates lists of normed scores."""

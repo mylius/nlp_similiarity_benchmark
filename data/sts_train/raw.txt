@@ -48,9 +48,9 @@ Bulb C had an open path with the battery	Bulb C was no longer in a closed path w
 Because when the voltage goes from 1.5 to 0.0 you can locate the gap.	A non-zero voltage means that there is a gap
 Where there is a difference in electrical state, that is where the gap in the connection is.	Measuring voltage indicates the place where the electrical state changes due to a gap.
 the bulb terminal has no gap and the bulb will light	There is a gap.
-i had a dream i was surronded by bamboo, on my belly and scared.        a little over a year later i was surronded by bamboo, on my belly and scared.
-there is hope in iraq.  there was no threat.
-a very clear miscarriage of justice.    i agree on the miscarriage of justice.
+i had a dream i was surronded by bamboo, on my belly and scared.	a little over a year later i was surronded by bamboo, on my belly and scared.
+there is hope in iraq.	there was no threat.
+a very clear miscarriage of justice.	i agree on the miscarriage of justice.
 ain't that wonderful of the man?	isn't that what you want?
 driving on an icy road and wrecking isn't a federal problem until it affects thousands of people.	every winter driving on icy roads affects thousands of people.
 as i asked, where's the 6 trillion dollars in that graph?	can you explain where the 6 trillion dollars is in that graph?
@@ -68,7 +68,6 @@ A white cat rests it head on a stone.	A striped cat looking lazily through verti
 An English-themed furniture set.	A large steam locomotive pulling a passenger train through the countryside.
 An airplane sitting on the tarmac at an airport with another plane in the background.	 White and green commercial airliner taking off of runway.
 The udders of a dairy cow that is standing in a pasture near a large building.	A cows ass and some buildings 
-
 How about some testimonies from real health experts?	Also, who's to say there aren't testimonies from "real" health experts on there?
 "Then the captain was gone.	Then the captain came back.
 The problem is simpler than that.	The problem is simple.
