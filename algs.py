@@ -3,12 +3,19 @@ import spacy
 import numpy as np
 from sklearn import preprocessing
 from scipy import sparse
+<<<<<<< HEAD
 from collections import OrderedDict
 from collections import defaultdict
 from collections import Counter
 import warnings
 from sklearn.utils.validation import DataConversionWarning
 warnings.filterwarnings("ignore",category=DataConversionWarning)
+=======
+from sklearn.metrics.pairwise import cosine_similarity
+from collections import OrderedDict
+from collections import defaultdict
+from collections import Counter
+>>>>>>> cba3ad4330647d447a5a020f799a7ade5e37b174
 
 
 class Algorithm:
@@ -28,7 +35,7 @@ class Algorithm:
     def compare(self, a, b, func):
         """Returns the cosine similarity between two matrives a,b.
         Interestingly scipys cosine function doesn't work on scipys sparse matrices, while sklearns does."""
-        return func(a, b)
+        return cosine_similarity(a, b)
 
 
 class BagOfWords(Algorithm):

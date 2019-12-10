@@ -1,12 +1,18 @@
-from sklearn import preprocessing
 import numpy as np
-import spacy
-import re
-from scipy.spatial.distance import cosine
+from scipy.stats import pearsonr
+from scipy.stats import spearmanr
+from sklearn.metrics import mean_squared_error
+from sklearn import preprocessing
+import argparse
+import algs
+import util
+from collections import OrderedDict
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics import jaccard_similarity_score
 
 
 class Dataset:
-    def __init__(self,name):
+    def __init__(self, name):
         self.name = name
         self.data = [[]]
 
@@ -25,106 +31,157 @@ class Dataset:
 
     def load_data(self, path):
         """Loads a list of strings."""
-        file = open(path, "r") 
-        for line in file.readlines():
-            self.data[0].append(line)
-
+        with open(path, "r") as f:
+            for line in f.readlines():
+                self.data[0].append(line)
 
 
 class Dataset_annot(Dataset):
-    def __init__(self,name):
-        self.scores = []
-        self.ids = []
+    def __init__(self, name):
         self.name = name
-        self.data = [[],[]]
-        self.norm_score = []
+        self.train_data = [[], []]
+        self.test_data = [[], []]
+        self.train_score = []
+        self.test_score = []
+        self.train_ids = []
+        self.test_ids = []
+        self.results = {}
+        self.phrase_vecs = {}
 
-    def load_sick(self, path):
-        file = open(path, "r") 
-        i=0
-        for line in file.readlines():
-            line = line.split("\t")
-            self.data[0].append(line[1])
-            self.data[1].append(line[2])
-            self.scores.append(float(line[4]))
-            self.ids.append(i)
-            i+=1
+    def load(self, path, data_rows, data, score_row, scores, id_row=None, ids=None):
+        with open(path, "r") as f:
+            next(f)
+            for line in f.readlines():
+                line = line.split("\t")
+                j = 0
+                for row in data_rows:
+                    data[j].append(line[row])
+                    j += 1
+                scores.append((line[score_row]))
+                if id_row != None:
+                    ids.append(line[id_row])
 
-    def __str__(self):
-        output = ""
-        for i in range(len(self.data[0])):
-            output += str(self.ids[i]) + " " + self.data[0][i] + "\t " + self.data[1][i]+ "\t " + self.scores[i] + "\n"
-        return output
+    def load_sick(self):
+        """Loads the SICK dataset."""
+        self.load("./data/SICK_train.txt", [1, 2],
+                  self.train_data, 3, self.train_score, 0, self.train_ids)
+        self.load("./data/SICK.txt", [1, 2],
+                  self.test_data, 3, self.test_score, 0, self.test_ids)
+        self.sick = True
 
-    def __getitem__(self, y):
-        output = str(self.ids[y]) + " " + self.data[0][y] + "\t " + self.data[1][y]+ "\t " + self.scores[y] + "\n"
-        return output
-
+    def load_sts(self):
+        # Loads the STS dataset.
+        f = open("./data/sts_test/raw.txt")
+        raw = f.read().split("\n")
+        data = open("./data/sts_test/gs.txt")
+        gs = data.read().split("\n")
+        f.close()
+        data.close()
+        for line in range(len(gs)):
+            if gs[line] != "\n" and gs[line] != "":
+                self.test_data[0].append(raw[line].split("\t")[0])
+                self.test_data[1].append(raw[line].split("\t")[1])
+                self.test_score.append(float(gs[line]))
+        with open("./data/sts_train/raw.txt") as data:
+            for line in data:
+                self.train_data[0].append(line.split("\t")[0])
+                self.train_data[1].append(line.split("\t")[1])
+        with open("./data/sts_train/gs.txt") as data:
+            for line in data:
+                self.train_score.append(float(line))
 
     def norm_scores(self):
-        self.norm_score = []        
-        self.norm_score = preprocessing.minmax_scale(self.scores)
-        
-    def __len__(self):
-        return len(self.ids)
+        """Creates lists of normed scores."""
+        self.train_norm_score = []
+        self.test_norm_score = []
+        self.train_norm_score = preprocessing.minmax_scale(self.train_score)
+        self.test_norm_score = preprocessing.minmax_scale(self.test_score)
 
-    def search(self, word):
+    def calc_vecs(self, alg):
+        """Precalculates the vectors and stores them in memory."""
+        if not alg.trained:
+            alg.train(self.train_data)
+        self.phrase_vecs[alg] = [[], []]
+        print("Creating Vectors")
+        for item in self.test_data[0]:
+            self.phrase_vecs[alg][0].append(alg.create_vec(item))
+        for item in self.test_data[1]:
+            self.phrase_vecs[alg][1].append(alg.create_vec(item))
+
+    def calc_results(self, alg, func):
+        """Runs a given algorithm and returns the difference to the ground truth."""
         results = []
-        for i in range(len(self.data[0])):
-            if word in self.data[0][i]:
-                results.append(self.data[0][i])
-            if word in self.data[1][i]:
-                results.append(self.data[1][i])
-        return results
-
-    def run_alg(self,alg):
-        results= []
-        print("Training...")
-        alg.train(self)
-        for i in range(len(self.data[0])):
-            results.append(float(alg.compare(self.data[0][i],self.data[1][i])))
-            print(float(alg.compare(self.data[0][i],self.data[1][i])))
-        return results-self.norm_score
-    
-
-class BagOfWords:
-    def __init__(self, language = "english",disable=["ner"]):
-        self.dict = []
-        self.language = language
-        self.disable = disable
-        if self.language == "english":
-            self.nlp = spacy.load("en_core_web_sm")
-        if self.language == "german":
-            self.nlp = spacy.load("de_core_news_sm")
-
-    def train(self,Dataset,lemmatize=True, stop = True):
-        data = ''
-        for sets in Dataset.data:
-            for item in sets:
-                data = data + item + " "
-        if lemmatize:
-            doc = self.nlp(data, disable = self.disable)
-            for token in doc:
-                self.dict.append(token.lemma_)
+        if not alg.trained:
+            alg.train(self.train_data)
+        if alg in self.phrase_vecs:
+            data = self.phrase_vecs[alg]
         else:
-            data=np.array(re.sub(r'\W+', ' ', data).split(" "))
-        if stop:
-            if self.language=="german":
-                stopwords = spacy.lang.de.stop_words.STOP_WORDS
-            if self.language=="english":
-                stopwords = spacy.lang.en.stop_words.STOP_WORDS
-            self.dict = [token for token in self.dict if not token in stopwords]
-        self.dict = np.unique(self.dict, return_counts=True)
-        print(self.dict[0])
+            self.calc_vecs(alg)
+        for i in range(len(self.test_data[0])):
+            res = float(alg.compare(
+                self.phrase_vecs[alg][0][i], self.phrase_vecs[alg][1][i], func))
+            results.append(res)
+        self.results[alg] = results
+
+    def compare(self, function, alg, comp_meas=cosine_similarity):
+        if alg not in self.results:
+            self.calc_results(alg, comp_meas)
+        return function(self.results[alg], self.test_norm_score)
+
+    def output_sick(self, function, alg):
+        if self.sick:
+            with open("./data/results_SICK_{}".format(alg.name), "w+") as data:
+                output = "pair_ID \t entailment_judgment \t relatedness_score\n"
+                for i in range(len(self.results[alg])):
+                    output += "{} \t NA \t {}\n".format(
+                        self.test_ids[i], self.results[alg][i]*4+1)
+                data.write(output)
 
 
+def benchmark(algorithms):
+    db2 = Dataset_annot("sts")
+    db2.load_sts()
+    db2.norm_scores()
+    print("Results for STS dataset:")
+    for i in range(len(algorithms)):
+        print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
+            algorithms[i].name, db2.compare(pearsonr, algorithms[i]),
+            db2.compare(spearmanr, algorithms[i]),
+            db2.compare(mean_squared_error, algorithms[i])))
 
-    def create_vec(self,line):
-        count = np.zeros(len(self.dict[0]))
-        words = self.nlp(line)
-        for token in words:
-            count[np.where(np.array(self.dict[0])==token.lemma_)]+=1
-        return count
-    
-    def compare(self, a,b):
-        return cosine(self.create_vec(a),self.create_vec(b))
+    db = Dataset_annot("sick")
+    db.load_sick()
+    db.norm_scores()
+    print("Results for SICK dataset:")
+    for i in range(len(algorithms)):
+        algorithms[i].train(db.train_data)
+        print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
+            algorithms[i].name, db.compare(pearsonr, algorithms[i]),
+            db.compare(spearmanr, algorithms[i]),
+            db.compare(mean_squared_error, algorithms[i])))
+
+
+def create_alg_list(in_list):
+    alg_list = []
+    Algorithms = OrderedDict()
+    Algorithms["bow"] = algs.BagOfWords
+    Algorithms["bow_l"] = algs.BagOfWords_lemma
+    Algorithms["spacy"] = algs.spacy_sem_sim
+    if in_list != None:
+        in_list = in_list.split(",")
+        for alg in in_list:
+            if alg in Algorithms:
+                alg_list.append(Algorithms[alg]())
+    else:
+        for alg in Algorithms:
+            alg_list.append(Algorithms[alg]())
+    return alg_list
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Benchmarks Semantic Similiarty Benchmarks")
+    parser.add_argument("algs", metavar="algs", type=str, nargs='?',
+                        help="Choose which Algorithms to run buy passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation",)
+    args = parser.parse_args()
+    benchmark(create_alg_list(args.algs))
