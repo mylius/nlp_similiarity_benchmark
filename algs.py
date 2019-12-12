@@ -10,6 +10,8 @@ from collections import Counter
 import warnings
 from sklearn.utils.validation import DataConversionWarning
 warnings.filterwarnings("ignore", category=DataConversionWarning)
+from functools import lru_cache
+from nltk.corpus import stopwords
 
 
 class Algorithm:
@@ -34,18 +36,19 @@ class Algorithm:
 
 class BagOfWords(Algorithm):
 
-    def __init__(self, name="BagOfWords simple language agnostic", disable=["ner"], language="english", stop=True):
+    def __init__(self, name="BagOfWords simple language agnostic", disable=["ner"], language="english"):
         super().__init__(name, language)
         self.dictionary = {}
         self.weights = []
         self.disable = disable
-        self.stop = stop
+        self.stop = False
         if self.language == "english":
             self.nlp = spacy.load("en_core_web_sm")
         elif self.language == "german":
             self.nlp = spacy.load("de_core_news_sm")
         else:
             raise ValueError("Unsupported language")
+
 
     def train(self, in_dataset):
         """Creates a dictionary of occuring words for a given dataset."""
@@ -57,18 +60,27 @@ class BagOfWords(Algorithm):
         data, self.weights = np.unique(data, return_counts=True)
         index = 0
         for value in data:
-            self.dictionary[value] = index
+            stop_list = set(stopwords.words(self.language))
+            if value not in stop_list and self.stop:
+                self.dictionary[value] = index
+            elif not self.stop:
+                self.dictionary[value] = index
             index += 1
         self.weights = sparse.csr_matrix(
             preprocessing.minmax_scale(self.weights))
         self.trained = True
 
-    def create_vec(self, in_line):
-        """Returns a matrix denoting which words from the dictionary occure in a given line."""
+    def create_count(self, in_line):
         words = np.array(re.sub(r'\W+', ' ', in_line).split(" "))
         count = defaultdict(int)
         for token in words:
             count[token] += 1
+        return count
+
+
+    def create_vec(self, in_line):
+        """Returns a matrix denoting which words from the dictionary occure in a given line."""
+        count = self.create_count(in_line)
         col = []
         row = []
         data = []
@@ -79,10 +91,13 @@ class BagOfWords(Algorithm):
                 row.append(0)
         return sparse.csr_matrix((data, (row, col)), shape=(1, len(self.dictionary)))
 
+class BagOfWords_stop(BagOfWords):
+     def __init__(self, name="BagOfWords simple language agnostic, stopwords", disable=["ner"], language="english"):
+        super().__init__(name, language)
 
 class BagOfWords_lemma(BagOfWords):
 
-    def __init__(self, name="BagOfWords Lemmatized", disable=["ner"], language="english", stop=True):
+    def __init__(self, name="BagOfWords Lemmatized", disable=["ner"], language="english"):
         super().__init__(name, language)
 
     def train(self, in_dataset, stop=True):
@@ -95,7 +110,9 @@ class BagOfWords_lemma(BagOfWords):
         doc = self.nlp(data, disable=self.disable)
         data = []
         for item in doc:
-            if not item.is_stop and self.stop == True:
+            if not item.is_stop and self.stop:
+                data.append(item.lemma_)
+            elif not self.stop:
                 data.append(item.lemma_)
         data, self.weights = np.unique(data, return_counts=True)
         index = 0
@@ -106,23 +123,24 @@ class BagOfWords_lemma(BagOfWords):
             preprocessing.minmax_scale(self.weights))
         self.trained = True
 
-    def create_vec(self, in_line):
-        """Returns a matrix denoting which words from the dictionary occure in a given line."""
+    def create_count(self, in_line):
         words = self.nlp(str(in_line), disable=self.disable)
         count = defaultdict(int)
         # Using counter proofed unsucessfull since it bypasses lemmatization
         for token in words:
-            if not token.is_stop and self.stop == True:
+            if not token.is_stop and self.stop:
+                    count[token.lemma_] += 1
+            elif not self.stop: 
                 count[token.lemma_] += 1
-        col = []
-        row = []
-        data = []
-        for key, value in count.items():
-            if key in self.dictionary:
-                data.append(value)
-                col.append(self.dictionary[key])
-                row.append(0)
-        return sparse.csr_matrix((data, (row, col)), shape=(1, len(self.dictionary)))
+        return count
+
+
+class BagOfWords_lemma_stop(BagOfWords_lemma):
+
+    def __init__(self, name="BagOfWords Lemmatized, Stopwords", disable=["ner"], language="english"):
+        super().__init__(name, language)
+        self.stop = True
+
 
 
 class spacy_sem_sim(Algorithm):

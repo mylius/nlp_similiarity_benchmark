@@ -159,7 +159,9 @@ def create_alg_list(in_list):
     alg_list = []
     Algorithms = OrderedDict()
     Algorithms["bow"] = algs.BagOfWords
+    Algorithms["bow_s"] = algs.BagOfWords_stop
     Algorithms["bow_l"] = algs.BagOfWords_lemma
+    Algorithms["bow_ls"] = algs.BagOfWords_lemma_stop
     Algorithms["spacy_w2v"] = algs.spacy_sem_sim
     Algorithms["spacy_bert"] = algs.spacy_bert
     if in_list != None:
@@ -177,6 +179,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Benchmarks Semantic Similiarty Benchmarks")
     parser.add_argument("algs", metavar="algs", type=str, nargs='?',
-                        help="Choose which Algorithms to run buy passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation",)
+                        help="Choose which Algorithms to run buy passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation, bow_ls - bag of words eliminating stopwords using lemmatisation and",)
     args = parser.parse_args()
     benchmark(create_alg_list(args.algs))
