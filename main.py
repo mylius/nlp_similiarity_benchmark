@@ -8,7 +8,6 @@ import algs
 import util
 from collections import OrderedDict
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.metrics import jaccard_similarity_score
 import time
 
 
@@ -95,7 +94,7 @@ class Dataset_annot(Dataset):
         for item in self.test_data[1]:
             self.phrase_vecs[alg][1].append(alg.create_vec(item))
 
-    def calc_results(self, alg, func):
+    def calc_results(self, alg):
         """Runs a given algorithm and returns the difference to the ground truth."""
         results = []
         if not alg.trained:
@@ -106,13 +105,13 @@ class Dataset_annot(Dataset):
             self.calc_vecs(alg)
         for i in range(len(self.test_data[0])):
             res = float(alg.compare(
-                self.phrase_vecs[alg][0][i], self.phrase_vecs[alg][1][i], func))
+                self.phrase_vecs[alg][0][i], self.phrase_vecs[alg][1][i]))
             results.append(res)
         self.results[alg] = results
 
-    def compare(self, function, alg, comp_meas=cosine_similarity):
+    def compare(self, function, alg):
         if alg not in self.results:
-            self.calc_results(alg, comp_meas)
+            self.calc_results(alg)
         return function(self.results[alg], self.test_norm_score)
 
     def output_sick(self, function, alg):
@@ -160,8 +159,12 @@ def create_alg_list(in_list):
     Algorithms = OrderedDict()
     Algorithms["bow"] = algs.BagOfWords
     Algorithms["bow_s"] = algs.BagOfWords_stop
+    Algorithms["bow_j"] = algs.BagOfWords_jaccard
+    Algorithms["bow_j_s"] = algs.BagOfWords_jaccard_stop
     Algorithms["bow_l"] = algs.BagOfWords_lemma
     Algorithms["bow_ls"] = algs.BagOfWords_lemma_stop
+    Algorithms["bow_j_l"] = algs.BagOfWords_jaccard_lemma
+    Algorithms["bow_j_ls"] = algs.BagOfWords_jaccard_lemma_stop
     Algorithms["spacy_w2v"] = algs.spacy_sem_sim
     Algorithms["spacy_bert"] = algs.spacy_bert
     if in_list != None:
