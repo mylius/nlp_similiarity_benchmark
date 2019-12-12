@@ -36,7 +36,7 @@ class Algorithm:
 
 class BagOfWords(Algorithm):
 
-    def __init__(self, name="BagOfWords simple language agnostic", disable=["ner"], language="english"):
+    def __init__(self, name="BagOfWords regex", disable=["ner"], language="english"):
         super().__init__(name, language)
         self.dictionary = {}
         self.weights = []
@@ -60,12 +60,13 @@ class BagOfWords(Algorithm):
         data, self.weights = np.unique(data, return_counts=True)
         index = 0
         for value in data:
-            stop_list = set(stopwords.words(self.language))
-            if value not in stop_list and self.stop:
+            self.stop_list = set(stopwords.words(self.language))
+            if value not in self.stop_list and self.stop:
                 self.dictionary[value] = index
+                index += 1
             elif not self.stop:
                 self.dictionary[value] = index
-            index += 1
+                index += 1
         self.weights = sparse.csr_matrix(
             preprocessing.minmax_scale(self.weights))
         self.trained = True
@@ -74,7 +75,10 @@ class BagOfWords(Algorithm):
         words = np.array(re.sub(r'\W+', ' ', in_line).split(" "))
         count = defaultdict(int)
         for token in words:
-            count[token] += 1
+            if token not in self.stop_list and self.stop:
+                count[token] += 1
+            elif not self.stop:
+                count[token] += 1
         return count
 
 
@@ -92,8 +96,10 @@ class BagOfWords(Algorithm):
         return sparse.csr_matrix((data, (row, col)), shape=(1, len(self.dictionary)))
 
 class BagOfWords_stop(BagOfWords):
-     def __init__(self, name="BagOfWords simple language agnostic, stopwords", disable=["ner"], language="english"):
+     def __init__(self, name="BagOfWords regex eliminating stopwords", disable=["ner"], language="english"):
         super().__init__(name, language)
+        self.stop = True
+
 
 class BagOfWords_lemma(BagOfWords):
 
