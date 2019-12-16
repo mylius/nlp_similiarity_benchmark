@@ -47,6 +47,8 @@ class Dataset_annot(Dataset):
         self.test_ids = []
         self.results = {}
         self.phrase_vecs = {}
+        self.sick = False
+        self.sts = False
 
     def load(self, path, data_rows, data, score_row, scores, id_row=None, ids=None):
         with open(path, "r") as f:
@@ -57,7 +59,7 @@ class Dataset_annot(Dataset):
                 for row in data_rows:
                     data[j].append(line[row])
                     j += 1
-                scores.append((line[score_row]))
+                scores.append(float(line[score_row]))
                 if id_row != None:
                     ids.append(line[id_row])
 
@@ -75,13 +77,14 @@ class Dataset_annot(Dataset):
                   self.train_data, 0, self.train_score)
         self.load("./data/sts_test/raw_gs.txt", [1, 2],
                   self.test_data, 0, self.test_score)
+        self.sts = True
 
-    def norm_scores(self):
+    def norm_results(self,range):
         """Creates lists of normed scores."""
-        self.train_norm_score = []
-        self.test_norm_score = []
-        self.train_norm_score = preprocessing.minmax_scale(self.train_score)
-        self.test_norm_score = preprocessing.minmax_scale(self.test_score)
+        self.normed_results = {}
+        for key in self.results:
+            if key not in self.normed_results:
+                self.normed_results[key] = preprocessing.minmax_scale(self.results[key], range)
 
     def calc_vecs(self, alg):
         """Precalculates the vectors and stores them in memory."""
@@ -112,7 +115,11 @@ class Dataset_annot(Dataset):
     def compare(self, function, alg):
         if alg not in self.results:
             self.calc_results(alg)
-        return function(self.results[alg], self.test_norm_score)
+        if self.sick:
+            self.norm_results((1,5))
+        elif self.sts:
+            self.norm_results((0,5))
+        return function(self.normed_results[alg], self.test_score)
 
     def output_sick(self, function, alg):
         if self.sick:
@@ -127,7 +134,7 @@ class Dataset_annot(Dataset):
 def benchmark(algorithms):
     db2 = Dataset_annot("sts")
     db2.load_sts()
-    db2.norm_scores()
+    print(algorithms)
     print("Results for STS dataset:")
     for i in range(len(algorithms)):
         util.measure_time("Traintime",algorithms[i].train,db2.train_data)
@@ -141,7 +148,6 @@ def benchmark(algorithms):
 
     db = Dataset_annot("sick")
     db.load_sick()
-    db.norm_scores()
     print("Results for SICK dataset:")
     for i in range(len(algorithms)):
         util.measure_time("Traintime",algorithms[i].train,db.train_data)
@@ -159,10 +165,10 @@ def create_alg_list(in_list):
     Algorithms = OrderedDict()
     Algorithms["bow"] = algs.BagOfWords
     Algorithms["bow_s"] = algs.BagOfWords_stop
-    Algorithms["bow_j"] = algs.BagOfWords_jaccard
-    Algorithms["bow_j_s"] = algs.BagOfWords_jaccard_stop
     Algorithms["bow_l"] = algs.BagOfWords_lemma
     Algorithms["bow_ls"] = algs.BagOfWords_lemma_stop
+    Algorithms["bow_j"] = algs.BagOfWords_jaccard
+    Algorithms["bow_j_s"] = algs.BagOfWords_jaccard_stop
     Algorithms["bow_j_l"] = algs.BagOfWords_jaccard_lemma
     Algorithms["bow_j_ls"] = algs.BagOfWords_jaccard_lemma_stop
     Algorithms["spacy_w2v"] = algs.spacy_sem_sim
