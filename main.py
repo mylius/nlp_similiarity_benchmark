@@ -9,6 +9,8 @@ import util
 from collections import OrderedDict
 from sklearn.metrics.pairwise import cosine_similarity
 import time
+import json
+from json import JSONEncoder
 
 
 class Dataset:
@@ -79,12 +81,13 @@ class Dataset_annot(Dataset):
                   self.test_data, 0, self.test_score)
         self.sts = True
 
-    def norm_results(self,range):
+    def norm_results(self, range):
         """Creates lists of normed scores."""
         self.normed_results = {}
         for key in self.results:
             if key not in self.normed_results:
-                self.normed_results[key] = preprocessing.minmax_scale(self.results[key], range)
+                self.normed_results[key] = preprocessing.minmax_scale(
+                    self.results[key], range)
 
     def calc_vecs(self, alg):
         """Precalculates the vectors and stores them in memory."""
@@ -116,9 +119,9 @@ class Dataset_annot(Dataset):
         if alg not in self.results:
             self.calc_results(alg)
         if self.sick:
-            self.norm_results((1,5))
+            self.norm_results((1, 5))
         elif self.sts:
-            self.norm_results((0,5))
+            self.norm_results((0, 5))
         return function(self.normed_results[alg], self.test_score)
 
     def output_sick(self, function, alg):
@@ -131,33 +134,40 @@ class Dataset_annot(Dataset):
                 data.write(output)
 
 
+
+def run_alg(alg, db):
+    result = {}
+    result["traintime"]= util.measure_time(
+        "Traintime", alg.train, db.train_data)
+    starttime = time.time()
+    result["pearson"] = db.compare(pearsonr, alg)[0]
+    result["spearman"] = db.compare(spearmanr, alg)[0]
+    result["mre"] = db.compare(mean_squared_error, alg)
+    endtime = time.time()
+    result["runtime"] = endtime-starttime
+    result["alg"] = alg.name
+    result["db"] = db.name
+    
+    return result
+
+
 def benchmark(algorithms):
     db2 = Dataset_annot("sts")
     db2.load_sts()
-    print(algorithms)
     print("Results for STS dataset:")
+    run_results = {}
     for i in range(len(algorithms)):
-        util.measure_time("Traintime",algorithms[i].train,db2.train_data)
-        starttime = time.time()
-        print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
-            algorithms[i].name, db2.compare(pearsonr, algorithms[i]),
-            db2.compare(spearmanr, algorithms[i]),
-            db2.compare(mean_squared_error, algorithms[i])))
-        endtime = time.time()
-        print("Runtime: {}s".format(endtime-starttime))
-
+        run_results[algorithms[i].name + db2.name] = run_alg(algorithms[i], db2)
     db = Dataset_annot("sick")
     db.load_sick()
     print("Results for SICK dataset:")
     for i in range(len(algorithms)):
-        util.measure_time("Traintime",algorithms[i].train,db.train_data)
-        starttime = time.time()
-        print("{} correlation: \n Pearson:{} \n Spearman: {}\n MSE: {}".format(
-            algorithms[i].name, db.compare(pearsonr, algorithms[i]),
-            db.compare(spearmanr, algorithms[i]),
-            db.compare(mean_squared_error, algorithms[i])))
-        endtime = time.time()
-        print("Runtime: {}s".format(endtime-starttime))
+        run_results[algorithms[i].name + db.name] = run_alg(algorithms[i], db)
+    output = []
+    for res in run_results:
+        output.append(run_results[res])
+    with open("./data/results.json", "w+") as f:
+        f.write(json.dumps(output))
 
 
 def create_alg_list(in_list):
@@ -171,6 +181,10 @@ def create_alg_list(in_list):
     Algorithms["bow_j_s"] = algs.BagOfWords_jaccard_stop
     Algorithms["bow_j_l"] = algs.BagOfWords_jaccard_lemma
     Algorithms["bow_j_ls"] = algs.BagOfWords_jaccard_lemma_stop
+    Algorithms["bow_l2"] = algs.BagOfWords_l2
+    Algorithms["bow_l2_s"] = algs.BagOfWords_l2_stop
+    Algorithms["bow_l2_l"] = algs.BagOfWords_l2_lemma
+    Algorithms["bow_l2_ls"] = algs.BagOfWords_l2_lemma_stop
     Algorithms["spacy_w2v"] = algs.spacy_sem_sim
     Algorithms["spacy_bert"] = algs.spacy_bert
     if in_list != None:

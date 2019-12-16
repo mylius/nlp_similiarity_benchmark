@@ -115,6 +115,20 @@ class BagOfWords_jaccard_stop(BagOfWords_jaccard):
         super().__init__(name, language)
         self.stop = True
 
+class BagOfWords_l2(BagOfWords):
+    def __init__(self, name="BagOfWords regex l2 distance", disable=["ner"], language="english"):
+        super().__init__(name, language)
+
+    def compare(self, a, b):
+        """Returns the l2 similiarity between two matrices a,b."""
+        return sparse.linalg.norm(a-b)
+
+
+class BagOfWords_l2_stop(BagOfWords_l2):
+    def __init__(self, name="BagOfWords regex l2 distance eliminating stopwords", disable=["ner"], language="english"):
+        super().__init__(name, language)
+        self.stop = True
+
 
 class BagOfWords_lemma(BagOfWords):
 
@@ -167,7 +181,7 @@ class BagOfWords_jaccard_lemma(BagOfWords_lemma):
         super().__init__(name, language)
 
     def compare(self, a, b):
-        """Returns the jaccard similiarity between two matrices a,b."""
+        """Returns the jaccard distance between two matrices a,b."""
         #couldn't get this to work directly with the csr_matrices.
         return jaccard_score(a.todense().T, b.todense().T, average="macro")
 
@@ -177,11 +191,25 @@ class BagOfWords_jaccard_lemma_stop(BagOfWords_jaccard_lemma):
         super().__init__(name, language)
         self.stop = True
 
+class BagOfWords_l2_lemma(BagOfWords_lemma):
+    def __init__(self, name="BagOfWords lemmatized l2 distance", disable=["ner"], language="english"):
+        super().__init__(name, language)
+
+    def compare(self, a, b):
+        """Returns the l2 similiarity between two matrices a,b."""
+        return sparse.linalg.norm(a-b)
+
+
+class BagOfWords_l2_lemma_stop(BagOfWords_l2_lemma):
+    def __init__(self, name="BagOfWords lemmatized l2 distance eliminating stopwords", disable=["ner"], language="english"):
+        super().__init__(name, language)
+        self.stop = True
+
 
 
 class spacy_sem_sim(Algorithm):
 
-    def __init__(self, name="spacy", language="english", model="md"):
+    def __init__(self, name="Spacy W2V", language="english", model="md"):
         super().__init__(name, language)
         self.model = model
 
@@ -201,11 +229,12 @@ class spacy_sem_sim(Algorithm):
             self.nlp = spacy.load("de_core_news_{}".format(self.model))
         else:
             raise ValueError("Unsupported language")
+        self.trained = True
 
 
 class spacy_bert(Algorithm):
 
-    def __init__(self, name="spacy", language="english", model="lg"):
+    def __init__(self, name="spacy Bert", language="english", model="lg"):
         super().__init__(name, language)
         self.model = model
 
@@ -227,3 +256,4 @@ class spacy_bert(Algorithm):
                 "en_trf_bertbaseuncased_lg{}".format(self.model))
         else:
             raise ValueError("Unsupported language")
+        self.trained = True
