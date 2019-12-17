@@ -81,13 +81,13 @@ class Dataset_annot(Dataset):
                   self.test_data, 0, self.test_score)
         self.sts = True
 
-    def norm_results(self, range):
+    def norm_results(self, feature_range):
         """Creates lists of normed scores."""
         self.normed_results = {}
         for key in self.results:
             if key not in self.normed_results:
                 self.normed_results[key] = preprocessing.minmax_scale(
-                    self.results[key], range)
+                    self.results[key], feature_range)
 
     def calc_vecs(self, alg):
         """Precalculates the vectors and stores them in memory."""
@@ -134,10 +134,9 @@ class Dataset_annot(Dataset):
                 data.write(output)
 
 
-
 def run_alg(alg, db):
     result = {}
-    result["traintime"]= util.measure_time(
+    result["traintime"] = util.measure_time(
         "Traintime", alg.train, db.train_data)
     starttime = time.time()
     result["pearson"] = db.compare(pearsonr, alg)[0]
@@ -147,7 +146,7 @@ def run_alg(alg, db):
     result["runtime"] = endtime-starttime
     result["alg"] = alg.name
     result["db"] = db.name
-    
+
     return result
 
 
@@ -157,7 +156,8 @@ def benchmark(algorithms):
     print("Results for STS dataset:")
     run_results = {}
     for i in range(len(algorithms)):
-        run_results[algorithms[i].name + db2.name] = run_alg(algorithms[i], db2)
+        run_results[algorithms[i].name +
+                    db2.name] = run_alg(algorithms[i], db2)
     db = Dataset_annot("sick")
     db.load_sick()
     print("Results for SICK dataset:")
