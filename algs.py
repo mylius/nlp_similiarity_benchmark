@@ -1,5 +1,4 @@
 import util
-from nltk.corpus import stopwords
 from functools import lru_cache
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import jaccard_score
@@ -59,7 +58,10 @@ class BagOfWords(Algorithm):
         data, self.weights = np.unique(data, return_counts=True)
         index = 0
         for value in data:
-            self.stop_list = set(stopwords.words(self.language))
+            if self.language=="german":
+                self.stop_list = spacy.lang.de.stop_words.STOP_WORDS
+            if self.language=="english":
+                self.stop_list = spacy.lang.en.stop_words.STOP_WORDS
             if value not in self.stop_list and self.stop:
                 self.dictionary[value] = index
                 index += 1
@@ -252,10 +254,10 @@ class spacy_bert(Algorithm):
         print("Initializing spacy model")
         if self.language == "english":
             self.nlp = spacy.load(
-                "en_trf_bertbaseuncased_{}".format(self.model))
+                "en_trf_bertbaseuncased_lg")
         elif self.language == "german":
             self.nlp = spacy.load(
-                "de_trf_bertbasecased_{}".format(self.model))
+                "de_trf_bertbasecased_lg")
         else:
             raise ValueError("Unsupported language")
         self.trained = True
