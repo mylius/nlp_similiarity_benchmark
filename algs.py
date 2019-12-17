@@ -1,3 +1,4 @@
+import util
 from nltk.corpus import stopwords
 from functools import lru_cache
 from sklearn.metrics.pairwise import cosine_similarity
@@ -12,7 +13,6 @@ from collections import Counter
 import warnings
 from sklearn.utils.validation import DataConversionWarning
 warnings.filterwarnings("ignore", category=DataConversionWarning)
-import util
 
 
 class Algorithm:
@@ -106,7 +106,7 @@ class BagOfWords_jaccard(BagOfWords):
 
     def compare(self, a, b):
         """Returns the jaccard similiarity between two matrices a,b."""
-        #couldn't get this to work directly with the csr_matrices.
+        # couldn't get this to work directly with the csr_matrices.
         return jaccard_score(a.todense().T, b.todense().T, average="macro")
 
 
@@ -114,6 +114,7 @@ class BagOfWords_jaccard_stop(BagOfWords_jaccard):
     def __init__(self, name="BagOfWords regex jaccard distance eliminating stopwords", disable=["ner"], language="english"):
         super().__init__(name, language)
         self.stop = True
+
 
 class BagOfWords_l2(BagOfWords):
     def __init__(self, name="BagOfWords regex l2 distance", disable=["ner"], language="english"):
@@ -176,13 +177,14 @@ class BagOfWords_lemma_stop(BagOfWords_lemma):
         super().__init__(name, language)
         self.stop = True
 
+
 class BagOfWords_jaccard_lemma(BagOfWords_lemma):
     def __init__(self, name="BagOfWords lemmatized jaccard distance", disable=["ner"], language="english"):
         super().__init__(name, language)
 
     def compare(self, a, b):
         """Returns the jaccard distance between two matrices a,b."""
-        #couldn't get this to work directly with the csr_matrices.
+        # couldn't get this to work directly with the csr_matrices.
         return jaccard_score(a.todense().T, b.todense().T, average="macro")
 
 
@@ -190,6 +192,7 @@ class BagOfWords_jaccard_lemma_stop(BagOfWords_jaccard_lemma):
     def __init__(self, name="BagOfWords lemmatized jaccard distance eliminating stopwords", disable=["ner"], language="english"):
         super().__init__(name, language)
         self.stop = True
+
 
 class BagOfWords_l2_lemma(BagOfWords_lemma):
     def __init__(self, name="BagOfWords lemmatized l2 distance", disable=["ner"], language="english"):
@@ -204,7 +207,6 @@ class BagOfWords_l2_lemma_stop(BagOfWords_l2_lemma):
     def __init__(self, name="BagOfWords lemmatized l2 distance eliminating stopwords", disable=["ner"], language="english"):
         super().__init__(name, language)
         self.stop = True
-
 
 
 class spacy_sem_sim(Algorithm):
@@ -253,7 +255,7 @@ class spacy_bert(Algorithm):
                 "en_trf_bertbaseuncased_{}".format(self.model))
         elif self.language == "german":
             self.nlp = spacy.load(
-                "en_trf_bertbaseuncased_lg{}".format(self.model))
+                "de_trf_bertbasecased_{}".format(self.model))
         else:
             raise ValueError("Unsupported language")
         self.trained = True
