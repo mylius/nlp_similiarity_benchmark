@@ -43,6 +43,13 @@ class Dataset:
                 i+=1
 
     def run_annot(self):
+        """Randomly selects 3 senteces from self.data and asks the user to evaluate which sentence is more simmilar to a given reference sentence.
+        The results are stored in a 3d array:
+            1st dim: reference sentence id
+            2nd dim: id with the more simmilar sentence
+            3rd dim: id with the less similar sentence
+        If you wanted to compare two sentences you could compare:
+        self.annot[x][y][z] to self.annot[x][z][y]"""
         run = True
         if self.annots == None:
             id_len = len(self.ids)
