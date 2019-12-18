@@ -16,7 +16,9 @@ from json import JSONEncoder
 class Dataset:
     def __init__(self, name):
         self.name = name
-        self.data = [[]]
+        self.data = []
+        self.ids = []
+        self.annots = None
 
     def __str__(self):
         output = ""
@@ -34,8 +36,31 @@ class Dataset:
     def load_data(self, path):
         """Loads a list of strings."""
         with open(path, "r") as f:
+            i = 0
             for line in f.readlines():
-                self.data[0].append(line)
+                self.data.append(line)
+                self.ids.append(i)
+                i+=1
+
+    def run_annot(self):
+        run = True
+        if self.annots == None:
+            id_len = len(self.ids)
+            self.annots = np.zeros((id_len,id_len,id_len))
+        while run:
+            sentence_ids = np.random.choice(self.ids, 3)
+            sentences = np.array(self.data)[sentence_ids]
+            print("Reference:\n {}\n\n".format(sentences[0]),"Sentence 1:\n {}\n\n".format(sentences[1]),"Sentence 2:\n {}".format(sentences[2]))
+            answer = input().lower()
+            if answer == "quit" or answer == "q":
+                run = False
+            elif answer == "1":
+                self.annots[sentence_ids[0],sentence_ids[1],sentence_ids[2]] += 1
+                print("Sentence 1 is more similar to reference sentence.\n" )
+            elif answer == "2":
+                self.annots[sentence_ids[0],sentence_ids[2],sentence_ids[1]] += 1
+                print("Sentence 2 is more similar to reference sentence.\n" )
+        
 
 
 class Dataset_annot(Dataset):
@@ -204,4 +229,8 @@ if __name__ == "__main__":
     parser.add_argument("algs", metavar="algs", type=str, nargs='?',
                         help="Choose which Algorithms to run by passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation, bow_ls - bag of words eliminating stopwords using lemmatisation and",)
     args = parser.parse_args()
-    benchmark(create_alg_list(args.algs))
+    if args.algs != None:
+        benchmark(create_alg_list(args.algs))
+    db = Dataset("nachrichten") 
+    db.load_data("./data/nachrichten.txt")
+    db.run_eval()
