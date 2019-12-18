@@ -62,10 +62,7 @@ class BagOfWords(Algorithm):
                 self.stop_list = spacy.lang.de.stop_words.STOP_WORDS
             if self.language=="english":
                 self.stop_list = spacy.lang.en.stop_words.STOP_WORDS
-            if value not in self.stop_list and self.stop:
-                self.dictionary[value] = index
-                index += 1
-            elif not self.stop:
+            if value not in self.stop_list or not self.stop:
                 self.dictionary[value] = index
                 index += 1
         self.weights = sparse.csr_matrix(
@@ -124,7 +121,7 @@ class BagOfWords_l2(BagOfWords):
 
     def compare(self, a, b):
         """Returns the l2 similiarity between two matrices a,b."""
-        return sparse.linalg.norm(a-b)
+        return 1/(1+sparse.linalg.norm(a-b))
 
 
 class BagOfWords_l2_stop(BagOfWords_l2):
@@ -148,9 +145,7 @@ class BagOfWords_lemma(BagOfWords):
         doc = self.nlp(data, disable=self.disable)
         data = []
         for item in doc:
-            if not item.is_stop and self.stop:
-                data.append(item.lemma_)
-            elif not self.stop:
+            if not item.is_stop or not self.stop:
                 data.append(item.lemma_)
         data, self.weights = np.unique(data, return_counts=True)
         index = 0
@@ -202,7 +197,7 @@ class BagOfWords_l2_lemma(BagOfWords_lemma):
 
     def compare(self, a, b):
         """Returns the l2 similiarity between two matrices a,b."""
-        return sparse.linalg.norm(a-b)
+        return 1/(1+sparse.linalg.norm(a-b))
 
 
 class BagOfWords_l2_lemma_stop(BagOfWords_l2_lemma):
