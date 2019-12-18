@@ -22,5 +22,4 @@ def measure_time(string, func, *args):
     starttime = time.time()
     result = func(*args)
     endtime = time.time()
-    print("{}: {}s".format(string,endtime-starttime))
-    return result
+    return endtime-starttime

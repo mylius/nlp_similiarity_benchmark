@@ -136,14 +136,14 @@ class Dataset_annot(Dataset):
 
 def run_alg(alg, db):
     result = {}
-    result["traintime"] = util.measure_time(
-        "Traintime", alg.train, db.train_data)
+    result["traintime"] = round(util.measure_time(
+        "Traintime", alg.train, db.train_data),3)
     starttime = time.time()
-    result["pearson"] = db.compare(pearsonr, alg)[0]
-    result["spearman"] = db.compare(spearmanr, alg)[0]
-    result["mre"] = db.compare(mean_squared_error, alg)
+    result["pearson"] = round(db.compare(pearsonr, alg)[0],3)
+    result["spearman"] = round(db.compare(spearmanr, alg)[0],3)
+    result["mre"] = round(db.compare(mean_squared_error, alg),3)
     endtime = time.time()
-    result["runtime"] = endtime-starttime
+    result["runtime"] = round(endtime-starttime,3)
     result["alg"] = alg.name
     result["db"] = db.name
 
@@ -167,7 +167,7 @@ def benchmark(algorithms):
     for res in run_results:
         output.append(run_results[res])
     with open("./data/results.json", "w+") as f:
-        f.write(json.dumps(output))
+        json.dump(output,f,indent=2)
 
 
 def create_alg_list(in_list):
@@ -202,6 +202,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Benchmarks Semantic Similiarty Benchmarks")
     parser.add_argument("algs", metavar="algs", type=str, nargs='?',
-                        help="Choose which Algorithms to run buy passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation, bow_ls - bag of words eliminating stopwords using lemmatisation and",)
+                        help="Choose which Algorithms to run by passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation, bow_ls - bag of words eliminating stopwords using lemmatisation and",)
     args = parser.parse_args()
     benchmark(create_alg_list(args.algs))
