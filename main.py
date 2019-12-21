@@ -19,7 +19,6 @@ class Dataset:
     def __init__(self, name):
         self.name = name
         self.data = []
-        self.ids = []
         self.annots = None
         self.phrase_vecs = {}
 
@@ -39,9 +38,8 @@ class Dataset:
     def load_data(self, path):
         """Loads a list of strings."""
         with open(path, "r") as f:
-            for idx, line in enumerate(f.readlines()):
+            for line in f.readlines():
                 self.data.append(line)
-                self.ids.append(idx)
         data_str = str(self.data)
         data_str = data_str.encode("utf-8")
         self.hash = hashlib.md5(data_str).hexdigest()
@@ -66,13 +64,13 @@ class Dataset:
         self.annot[x][y][z] to self.annot[x][z][y]"""
         run = True
         alg = algs.spacy_sem_sim(language="german")
-        id_len = len(self.ids)
+        id_len = len(self.data)
         if path.exists("./data/{}-scores.json".format(self.hash)):
             with open("./data/{}-scores.json".format(self.hash)) as f:
                 self.refscores = np.array(json.load(f))
         else:
             self.calc_vecs(alg)
-            self.refscores = np.zeros((id_len+1, id_len+1))
+            self.refscores = np.zeros((id_len, id_len))
             for vec1 in self.phrase_vecs[alg]:
                 for vec2 in self.phrase_vecs[alg]:
                     self.refscores[row][col] = alg.compare(
@@ -85,7 +83,7 @@ class Dataset:
         else:
             self.annots = defaultdict(int)
         while run:
-            sentence_ids = np.random.choice(self.ids, 3)
+            sentence_ids = np.random.choice(id_len, 3)
             sentences = np.array(self.data)[sentence_ids]
             answer = ""
             while answer not in ["quit", "q", "s", "1", "2"]:
