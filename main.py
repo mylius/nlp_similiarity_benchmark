@@ -13,6 +13,7 @@ import time
 import json
 from os import path
 import pickle
+from collections import defaultdict
 
 class Dataset:
     def __init__(self, name):
@@ -82,9 +83,9 @@ class Dataset:
                json.dump(self.refscores.tolist(),f, indent =2)
         if path.exists("./data/{}-annots.json".format(self.hash)):
             with open("./data/{}-annots.json".format(self.hash)) as f:
-                self.annots = np.array(json.load(f))
+                self.annots = defaultdict(int,json.load(f))
         else:
-            self.annots = np.zeros((id_len,id_len,id_len))
+            self.annots = defaultdict(int)
         while run:
             sentence_ids = np.random.choice(self.ids, 3)
             sentences = np.array(self.data)[sentence_ids]
@@ -97,15 +98,15 @@ class Dataset:
                     run = False
                 elif answer == "1":
                     print("Sentence 1 is more similar to reference sentence.\n")
-                    self.annots[sentence_ids[0],
-                                sentence_ids[1], sentence_ids[2]] += 1
+                    self.annots[str((sentence_ids[0],
+                                sentence_ids[1], sentence_ids[2]))] += 1
                     if self.refscores[sentence_ids[0]][sentence_ids[1]] > self.refscores[sentence_ids[0]][sentence_ids[2]]:
                         print("True!")
                     else:
                         print("False!")
                 elif answer == "2":
-                    self.annots[sentence_ids[0],
-                                sentence_ids[2], sentence_ids[1]] += 1
+                    self.annots[str((sentence_ids[0],
+                                sentence_ids[2], sentence_ids[1]))] += 1
                     print("Sentence 2 is more similar to reference sentence.\n")
                     if self.refscores[sentence_ids[0]][sentence_ids[2]] > self.refscores[sentence_ids[0]][sentence_ids[1]]:
                         print("True!")
@@ -114,7 +115,7 @@ class Dataset:
                 else:
                     print("Unrecognized answer.")
         with open("./data/{}-annots.json".format(self.hash),"w+") as f:
-               json.dump(self.annots.tolist(),f, indent =2)
+               json.dump(self.annots,f, indent =2)
         
 
 
