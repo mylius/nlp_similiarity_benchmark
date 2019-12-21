@@ -25,8 +25,8 @@ class Dataset:
 
     def __str__(self):
         output = ""
-        for i in range(len(self.data[0])):
-            output += str(self.data[0][i])+"\n"
+        for value in self.data:
+            output += str(value)+"\n"
         return output
 
     def search(self, word):
@@ -39,11 +39,9 @@ class Dataset:
     def load_data(self, path):
         """Loads a list of strings."""
         with open(path, "r") as f:
-            i = 0
-            for line in f.readlines():
+            for idx, line in enumerate(f.readlines()):
                 self.data.append(line)
-                self.ids.append(i)
-                i += 1
+                self.ids.append(idx)
         data_str = str(self.data)
         data_str = data_str.encode("utf-8")
         self.hash = hashlib.md5(data_str).hexdigest()
@@ -75,10 +73,10 @@ class Dataset:
         else:
             self.calc_vecs(alg)
             self.refscores = np.zeros((id_len+1, id_len+1))
-            for col in range(len(self.data)):
-                for row in range(len(self.data)):
+            for vec1 in self.phrase_vecs[alg]:
+                for vec2 in self.phrase_vecs[alg]:
                     self.refscores[row][col] = alg.compare(
-                        self.phrase_vecs[alg][row], self.phrase_vecs[alg][col])
+                        vec1,vec2)
             with open("./data/{}-scores.json".format(self.hash),"w+") as f:
                json.dump(self.refscores.tolist(),f, indent =2)
         if path.exists("./data/{}-annots.json".format(self.hash)):
@@ -138,10 +136,8 @@ class Dataset_annot(Dataset):
             next(f)
             for line in f.readlines():
                 line = line.split("\t")
-                j = 0
-                for row in data_rows:
-                    data[j].append(line[row])
-                    j += 1
+                for idx, row in enumerate(data_rows):
+                    data[idx].append(line[row])
                 scores.append(float(line[score_row]))
                 if id_row != None:
                     ids.append(line[id_row])
@@ -190,9 +186,9 @@ class Dataset_annot(Dataset):
             data = self.phrase_vecs[alg]
         else:
             self.calc_vecs(alg)
-        for i in range(len(self.test_data[0])):
+        for vec1,vec2 in zip(self.phrase_vecs[alg][0],self.phrase_vecs[alg][1]):
             res = float(alg.compare(
-                self.phrase_vecs[alg][0][i], self.phrase_vecs[alg][1][i]))
+                vec1, vec2))
             results.append(res)
         self.results[alg] = results
 
@@ -205,13 +201,13 @@ class Dataset_annot(Dataset):
             self.norm_results((0, 5))
         return function(self.normed_results[alg], self.test_score)
 
-    def output_sick(self, function, alg):
+    def output_sick(self, alg):
         if self.sick:
             with open("./data/results_SICK_{}".format(alg.name), "w+") as data:
                 output = "pair_ID \t entailment_judgment \t relatedness_score\n"
-                for i in range(len(self.results[alg])):
+                for idx,res in zip(self.test_ids,self.results[alg]):
                     output += "{} \t NA \t {}\n".format(
-                        self.test_ids[i], self.results[alg][i]*4+1)
+                        idx, res*4+1)
                 data.write(output)
 
 
@@ -236,14 +232,15 @@ def benchmark(algorithms):
     db2.load_sts()
     print("Results for STS dataset:")
     run_results = {}
-    for i in range(len(algorithms)):
-        run_results[algorithms[i].name +
-                    db2.name] = run_alg(algorithms[i], db2)
+    for alg in algorithms:
+        run_results[alg.name +
+                    db2.name] = run_alg(alg, db2)
     db = Dataset_annot("sick")
     db.load_sick()
     print("Results for SICK dataset:")
-    for i in range(len(algorithms)):
-        run_results[algorithms[i].name + db.name] = run_alg(algorithms[i], db)
+    for alg in algorithms:
+        run_results[alg.name + db.name] = run_alg(alg, db)
+        #db.output_sick(alg)
     output = []
     for res in run_results:
         output.append(run_results[res])

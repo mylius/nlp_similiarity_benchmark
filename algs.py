@@ -73,9 +73,7 @@ class BagOfWords(Algorithm):
         words = np.array(re.sub(r'\W+', ' ', in_line).split(" "))
         count = defaultdict(int)
         for token in words:
-            if token not in self.stop_list and self.stop:
-                count[token] += 1
-            elif not self.stop:
+            if token not in self.stop_list or not self.stop:
                 count[token] += 1
         return count
 
@@ -161,9 +159,7 @@ class BagOfWords_lemma(BagOfWords):
         count = defaultdict(int)
         # Using counter proofed unsucessfull since it bypasses lemmatization
         for token in words:
-            if not token.is_stop and self.stop:
-                count[token.lemma_] += 1
-            elif not self.stop:
+            if not token.is_stop or not self.stop:
                 count[token.lemma_] += 1
         return count
 
@@ -191,13 +187,13 @@ class BagOfWords_jaccard_lemma_stop(BagOfWords_jaccard_lemma):
         self.stop = True
 
 
-class BagOfWords_l2_lemma(BagOfWords_lemma):
+class BagOfWords_l2_lemma(BagOfWords_lemma,BagOfWords_l2):
     def __init__(self, name="BagOfWords lemmatized l2 distance", disable=["ner"], language="english"):
         super().__init__(name, language)
 
     def compare(self, a, b):
         """Returns the l2 similiarity between two matrices a,b."""
-        return 1/(1+sparse.linalg.norm(a-b))
+        BagOfWords_l2.compare(self, a, b)
 
 
 class BagOfWords_l2_lemma_stop(BagOfWords_l2_lemma):
