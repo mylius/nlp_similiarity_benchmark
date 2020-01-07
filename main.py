@@ -12,8 +12,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 import time
 import json
 from os import path
-import pickle
 from collections import defaultdict
+
 
 class Dataset:
     def __init__(self, name):
@@ -53,7 +53,6 @@ class Dataset:
         for item in self.data:
             self.phrase_vecs[alg].append(alg.create_vec(item))
 
-
     def run_annot(self):
         """Randomly selects 3 sentences from self.data and asks the user to evaluate which sentence is more simmilar to a given reference sentence.
         The results are stored in a 3d array:
@@ -71,15 +70,15 @@ class Dataset:
         else:
             self.calc_vecs(alg)
             self.refscores = np.zeros((id_len, id_len))
-            for vec1 in self.phrase_vecs[alg]:
-                for vec2 in self.phrase_vecs[alg]:
-                    self.refscores[row][col] = alg.compare(
-                        vec1,vec2)
-            with open("./data/{}-scores.json".format(self.hash),"w+") as f:
-               json.dump(self.refscores.tolist(),f, indent =2)
+            for idx, vec1 in enumerate(self.phrase_vecs[alg]):
+                for idy, vec2 in enumerate(self.phrase_vecs[alg]):
+                    self.refscores[idx][idy] = alg.compare(
+                        vec1, vec2)
+            with open("./data/{}-scores.json".format(self.hash), "w+") as f:
+                json.dump(self.refscores.tolist(), f, indent=2)
         if path.exists("./data/{}-annots.json".format(self.hash)):
             with open("./data/{}-annots.json".format(self.hash)) as f:
-                self.annots = defaultdict(int,json.load(f))
+                self.annots = defaultdict(int, json.load(f))
         else:
             self.annots = defaultdict(int)
         while run:
@@ -95,14 +94,14 @@ class Dataset:
                 elif answer == "1":
                     print("Sentence 1 is more similar to reference sentence.\n")
                     self.annots[str((sentence_ids[0],
-                                sentence_ids[1], sentence_ids[2]))] += 1
+                                     sentence_ids[1], sentence_ids[2]))] += 1
                     if self.refscores[sentence_ids[0]][sentence_ids[1]] > self.refscores[sentence_ids[0]][sentence_ids[2]]:
                         print("True!")
                     else:
                         print("False!")
                 elif answer == "2":
                     self.annots[str((sentence_ids[0],
-                                sentence_ids[2], sentence_ids[1]))] += 1
+                                     sentence_ids[2], sentence_ids[1]))] += 1
                     print("Sentence 2 is more similar to reference sentence.\n")
                     if self.refscores[sentence_ids[0]][sentence_ids[2]] > self.refscores[sentence_ids[0]][sentence_ids[1]]:
                         print("True!")
@@ -110,9 +109,8 @@ class Dataset:
                         print("False!")
                 else:
                     print("Unrecognized answer.")
-        with open("./data/{}-annots.json".format(self.hash),"w+") as f:
-               json.dump(self.annots,f, indent =2)
-        
+        with open("./data/{}-annots.json".format(self.hash), "w+") as f:
+            json.dump(self.annots, f, indent=2)
 
 
 class Dataset_annot(Dataset):
@@ -170,10 +168,9 @@ class Dataset_annot(Dataset):
             alg.train(self.train_data)
         self.phrase_vecs[alg] = [[], []]
         print("Creating Vectors")
-        for item in self.test_data[0]:
-            self.phrase_vecs[alg][0].append(alg.create_vec(item))
-        for item in self.test_data[1]:
-            self.phrase_vecs[alg][1].append(alg.create_vec(item))
+        for item0,item1 in zip(self.test_data[0],self.test_data[1]):
+            self.phrase_vecs[alg][0].append(alg.create_vec(item0))
+            self.phrase_vecs[alg][1].append(alg.create_vec(item1))
 
     def calc_results(self, alg):
         """Runs a given algorithm and returns the difference to the ground truth."""
@@ -184,7 +181,7 @@ class Dataset_annot(Dataset):
             data = self.phrase_vecs[alg]
         else:
             self.calc_vecs(alg)
-        for vec1,vec2 in zip(self.phrase_vecs[alg][0],self.phrase_vecs[alg][1]):
+        for vec1, vec2 in zip(self.phrase_vecs[alg][0], self.phrase_vecs[alg][1]):
             res = float(alg.compare(
                 vec1, vec2))
             results.append(res)
@@ -203,7 +200,7 @@ class Dataset_annot(Dataset):
         if self.sick:
             with open("./data/results_SICK_{}".format(alg.name), "w+") as data:
                 output = "pair_ID \t entailment_judgment \t relatedness_score\n"
-                for idx,res in zip(self.test_ids,self.results[alg]):
+                for idx, res in zip(self.test_ids, self.results[alg]):
                     output += "{} \t NA \t {}\n".format(
                         idx, res*4+1)
                 data.write(output)
@@ -212,13 +209,13 @@ class Dataset_annot(Dataset):
 def run_alg(alg, db):
     result = {}
     result["traintime"] = round(util.measure_time(
-        "Traintime", alg.train, db.train_data),3)
+        "Traintime", alg.train, db.train_data), 3)
     starttime = time.time()
-    result["pearson"] = round(db.compare(pearsonr, alg)[0],3)
-    result["spearman"] = round(db.compare(spearmanr, alg)[0],3)
-    result["mre"] = round(db.compare(mean_squared_error, alg),3)
+    result["pearson"] = round(db.compare(pearsonr, alg)[0], 3)
+    result["spearman"] = round(db.compare(spearmanr, alg)[0], 3)
+    result["mre"] = round(db.compare(mean_squared_error, alg), 3)
     endtime = time.time()
-    result["runtime"] = round(endtime-starttime,3)
+    result["runtime"] = round(endtime-starttime, 3)
     result["alg"] = alg.name
     result["db"] = db.name
 
@@ -238,12 +235,12 @@ def benchmark(algorithms):
     print("Results for SICK dataset:")
     for alg in algorithms:
         run_results[alg.name + db.name] = run_alg(alg, db)
-        #db.output_sick(alg)
+        # db.output_sick(alg)
     output = []
     for res in run_results:
         output.append(run_results[res])
     with open("./data/results.json", "w+") as f:
-        json.dump(output,f,indent=2)
+        json.dump(output, f, indent=2)
 
 
 def create_alg_list(in_list):
@@ -282,6 +279,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.algs != None:
         benchmark(create_alg_list(args.algs))
-    db = Dataset("nachrichten") 
+    db = Dataset("nachrichten")
     db.load_data("./data/nachrichten.txt")
     db.run_annot()
