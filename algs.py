@@ -193,7 +193,7 @@ class BagOfWords_l2_lemma(BagOfWords_lemma,BagOfWords_l2):
 
     def compare(self, a, b):
         """Returns the l2 similiarity between two matrices a,b."""
-        BagOfWords_l2.compare(self, a, b)
+        return BagOfWords_l2.compare(self, a, b)
 
 
 class BagOfWords_l2_lemma_stop(BagOfWords_l2_lemma):
