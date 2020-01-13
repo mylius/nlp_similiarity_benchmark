@@ -4,12 +4,15 @@ import hashlib
 import json
 from os import path
 from collections import defaultdict
+from scipy import special
+
 
 class Dataset:
     """
     A class that stores a not yet annotated dataset of strings, which allows you to annotate the data.
     The data is annotated by comparing  two sentece to a third reference sentence.
     When annotating the annotations are compared to spacy's w2v implementation.
+    The program can be quit by entering "q" during annotation and a triple can be skipped by entering "s".
     On loading a dataset a hash is created. The hash is used to store the annotations and the results expected based on w2v.
     This allows seamless work with different datasets.
 
@@ -24,10 +27,11 @@ class Dataset:
     db.load_sick("./data/data.txt")
     db.run_annot()
     """
+
     def __init__(self, name):
         self.name = name
         self.data = []
-        self.annots = None
+        self.annots = defaultdict(int)
         self.phrase_vecs = {}
 
     def __str__(self):
@@ -40,7 +44,7 @@ class Dataset:
     def search(self, word):
         """
         Returns all strings containing a specific word.
-        
+
          Parameters
         ----------
         word : The word to be searched for.
@@ -54,7 +58,7 @@ class Dataset:
     def load_data(self, path):
         """
         Loads a list of strings into self.data and creates a hash for it.
-        
+
         Parameters
         ----------
         path : A string denoting the path to the file to be loaded.
@@ -69,7 +73,7 @@ class Dataset:
     def calc_vecs(self, alg):
         """
         Precalculates the vectors and stores them in memory.
-        
+
         Parameters
         ----------
         alg : An algorithm to be used to create the vectors. Training can't need a training dataset.
@@ -82,12 +86,12 @@ class Dataset:
         for item in self.data:
             self.phrase_vecs[alg].append(alg.create_vec(item))
 
-    def calc_scores(self):
+    def calc_scores(self, alg):
         """
         Calculates the similarity scores for all sentence pairs and stores them using the calculated hash as the filename.
         """
         self.calc_vecs(alg)
-        self.refscores = np.zeros((id_len, id_len))
+        self.refscores = np.zeros((self.id_len, self.id_len))
         for idx, vec1 in enumerate(self.phrase_vecs[alg]):
             for idy, vec2 in enumerate(self.phrase_vecs[alg]):
                 self.refscores[idx][idy] = alg.compare(
@@ -95,30 +99,38 @@ class Dataset:
         with open("./data/{}-scores.json".format(self.hash), "w+") as f:
             json.dump(self.refscores.tolist(), f, indent=2)
 
-
     def run_annot(self):
         """Randomly selects 3 sentences from self.data and asks the user to evaluate which sentence is more simmilar to a given reference sentence.
         The results are stored in a 3d array:
             1st dim: reference sentence id
             2nd dim: id with the more simmilar sentence
             3rd dim: id with the less similar sentence
-        If you wanted to compare two sentences you could compare:
-        self.annot[x][y][z] to self.annot[x][z][y]"""
+        If you wanted to compare two sentences you would just check which one is in self.annots."""
         run = True
         alg = algs.spacy_sem_sim(language="german")
-        id_len = len(self.data)
+        self.id_len = len(self.data)
         if path.exists("./data/{}-scores.json".format(self.hash)):
             with open("./data/{}-scores.json".format(self.hash)) as f:
                 self.refscores = np.array(json.load(f))
         else:
-            self.calc_scores()
+            self.calc_scores(alg)
         if path.exists("./data/{}-annots.json".format(self.hash)):
             with open("./data/{}-annots.json".format(self.hash)) as f:
                 self.annots = defaultdict(int, json.load(f))
-        else:
-            self.annots = defaultdict(int)
         while run:
-            sentence_ids = np.random.choice(id_len, 3)
+            # check if all combinations have been annotated:
+            if len(self.annots) >= self.id_len*special.binom(self.id_len-1, 2):
+                print("All possible combinations have been annotated.")
+                break
+            sentence_ids = np.random.randint(low=0, high=self.id_len, size=3)
+            while sentence_ids[0] == sentence_ids[1] or sentence_ids[0] == sentence_ids[2] or sentence_ids[1] == sentence_ids[2]:
+                sentence_ids = np.random.randint(
+                    low=0, high=self.id_len, size=3)
+            # make sure the triplet is new.
+            if self.annots != {}:
+                while str((sentence_ids[0], sentence_ids[1], sentence_ids[2])) in self.annots or str((sentence_ids[0], sentence_ids[2], sentence_ids[1])) in self.annots or sentence_ids[0] == sentence_ids[1] or sentence_ids[0] == sentence_ids[2] or sentence_ids[1] == sentence_ids[2]:
+                    sentence_ids = np.random.randint(
+                        low=0, high=self.id_len, size=3)
             sentences = np.array(self.data)[sentence_ids]
             answer = ""
             while answer not in ["quit", "q", "s", "1", "2"]:
@@ -148,7 +160,8 @@ class Dataset:
         with open("./data/{}-annots.json".format(self.hash), "w+") as f:
             json.dump(self.annots, f, indent=2)
 
+
 if __name__ == "__main__":
     db = Dataset("nachrichten")
-    db.load_data("./data/nachrichten.txt")
+    db.load_data("./data/test.txt")
     db.run_annot()
