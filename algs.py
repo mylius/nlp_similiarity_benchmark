@@ -11,10 +11,12 @@ from collections import defaultdict
 from collections import Counter
 import warnings
 from sklearn.utils.validation import DataConversionWarning
+import gensim.downloader as api
 warnings.filterwarnings("ignore", category=DataConversionWarning)
 
 
 class Algorithm:
+    """Implements an algorithm which calculates the similarity between two strings."""
 
     def __init__(self, name, language="english",):
         self.trained = False
@@ -22,18 +24,40 @@ class Algorithm:
         self.language = language
 
     def train(self, in_dataset):
+        """
+        Trains the algorithm on a given list of strings.
+        
+        Parameters
+        ----------
+        in_dataset : Takes a list of strings.
+        """
         raise NotImplementedError("Train method not implemented")
 
     def create_vec(self, in_line):
-        """Returns a matrix denoting which words from the dictionary occure in a given line."""
+        """Returns a vector that can be used to calculate the difference between strings, when given a string.
+        
+        Parameters
+        ----------
+        in_line : A string for which a vector should be calculated.
+        """
         raise NotImplementedError("Create_vec method not implemented")
 
     def compare(self, a, b):
-        """Returns the cosine similarity between two matrices a,b."""
+        """Returns the cosine similarity between two matrices a,b.
+        
+        Parameters
+        ----------
+        a : A matrix.
+        b : Another matrix.
+        """
         return cosine_similarity(a, b)
 
 
 class BagOfWords(Algorithm):
+    """
+    Implements the BagOfWords algorithm.
+    
+    """
 
     def __init__(self, name="BagOfWords regex", disable=["ner"], language="english"):
         super().__init__(name, language)
@@ -251,4 +275,26 @@ class spacy_bert(Algorithm):
                 "de_trf_bertbasecased_lg")
         else:
             raise ValueError("Unsupported language")
+        self.trained = True
+
+
+class gensim_wmd(Algorithm):
+
+    def __init__(self, name="gensim wmd", language="english"):
+        super().__init__(name, language)
+
+    def compare(self, a, b):
+        """Returns the cosine similarity between two matrices a,b."""
+        return 1-self.model.wmdistance(a,b)
+
+    def create_vec(self, in_line):
+        """Nothing to do here."""
+        spacy.load('en_core_web_sm')
+        stop_words = spacy.lang.en.stop_words.STOP_WORDS
+        return [w for w in in_line.lower().split() if w not in stop_words]
+
+    def train(self, in_dataset):
+        print("Initializing gensim model")
+        self.model = api.load('word2vec-google-news-300')
+        self.model.init_sims(replace=True) 
         self.trained = True
