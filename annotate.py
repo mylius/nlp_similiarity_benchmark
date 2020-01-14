@@ -119,15 +119,11 @@ class Dataset:
             if len(self.annots) >= self.id_len*special.binom(self.id_len-1, 2):
                 print("All possible combinations have been annotated.")
                 break
-            sentence_ids = np.random.randint(low=0, high=self.id_len, size=3)
-            while sentence_ids[0] == sentence_ids[1] or sentence_ids[0] == sentence_ids[2] or sentence_ids[1] == sentence_ids[2]:
-                sentence_ids = np.random.randint(
-                    low=0, high=self.id_len, size=3)
+            sentence_ids = list(np.random.choice(self.id_len, 3, replace=False))
             # make sure the triplet is new.
             if self.annots != {}:
                 while str((sentence_ids[0], sentence_ids[1], sentence_ids[2])) in self.annots or str((sentence_ids[0], sentence_ids[2], sentence_ids[1])) in self.annots or sentence_ids[0] == sentence_ids[1] or sentence_ids[0] == sentence_ids[2] or sentence_ids[1] == sentence_ids[2]:
-                    sentence_ids = np.random.randint(
-                        low=0, high=self.id_len, size=3)
+                    sentence_ids = list(np.random.choice(self.id_len, 3, replace=False))
             sentences = np.array(self.data)[sentence_ids]
             answer = ""
             while answer not in ["quit", "q", "s", "1", "2"]:
