@@ -207,19 +207,20 @@ def create_alg_list(in_list):
     alg_list = []
     Algorithms = OrderedDict()
     Algorithms["bow"] = algs.BagOfWords
+    Algorithms["bow_j"] = algs.BagOfWords_jaccard
+    Algorithms["bow_l2"] = algs.BagOfWords_l2
     Algorithms["bow_s"] = algs.BagOfWords_stop
+    Algorithms["bow_l2_s"] = algs.BagOfWords_l2_stop
+    Algorithms["bow_j_s"] = algs.BagOfWords_jaccard_stop
     Algorithms["bow_l"] = algs.BagOfWords_lemma
     Algorithms["bow_ls"] = algs.BagOfWords_lemma_stop
-    Algorithms["bow_j"] = algs.BagOfWords_jaccard
-    Algorithms["bow_j_s"] = algs.BagOfWords_jaccard_stop
     Algorithms["bow_j_l"] = algs.BagOfWords_jaccard_lemma
     Algorithms["bow_j_ls"] = algs.BagOfWords_jaccard_lemma_stop
-    Algorithms["bow_l2"] = algs.BagOfWords_l2
-    Algorithms["bow_l2_s"] = algs.BagOfWords_l2_stop
     Algorithms["bow_l2_l"] = algs.BagOfWords_l2_lemma
     Algorithms["bow_l2_ls"] = algs.BagOfWords_l2_lemma_stop
     Algorithms["spacy_w2v"] = algs.spacy_sem_sim
     Algorithms["spacy_bert"] = algs.spacy_bert
+    Algorithms["gensim_wmd"] = algs.gensim_wmd
     if in_list != None:
         in_list = in_list.split(",")
         for alg in in_list:

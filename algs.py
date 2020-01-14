@@ -12,6 +12,8 @@ from collections import Counter
 import warnings
 from sklearn.utils.validation import DataConversionWarning
 import gensim.downloader as api
+from gensim.models import Word2Vec
+from gensim.similarities import WmdSimilarity
 warnings.filterwarnings("ignore", category=DataConversionWarning)
 
 
@@ -59,11 +61,10 @@ class BagOfWords(Algorithm):
     
     """
 
-    def __init__(self, name="BagOfWords regex", disable=["ner"], language="english"):
+    def __init__(self, name="BagOfWords regex", language="english"):
         super().__init__(name, language)
         self.dictionary = {}
         self.weights = []
-        self.disable = disable
         self.stop = False
         if self.language == "english":
             self.nlp = spacy.load("en_core_web_sm")
@@ -116,13 +117,13 @@ class BagOfWords(Algorithm):
 
 
 class BagOfWords_stop(BagOfWords):
-    def __init__(self, name="BagOfWords regex eliminating stopwords", disable=["ner"], language="english"):
+    def __init__(self, name="BagOfWords regex eliminating stopwords", language="english"):
         super().__init__(name, language)
         self.stop = True
 
 
 class BagOfWords_jaccard(BagOfWords):
-    def __init__(self, name="BagOfWords regex jaccard distance", disable=["ner"], language="english"):
+    def __init__(self, name="BagOfWords regex jaccard distance",  language="english"):
         super().__init__(name, language)
 
     def compare(self, a, b):
@@ -132,13 +133,13 @@ class BagOfWords_jaccard(BagOfWords):
 
 
 class BagOfWords_jaccard_stop(BagOfWords_jaccard):
-    def __init__(self, name="BagOfWords regex jaccard distance eliminating stopwords", disable=["ner"], language="english"):
+    def __init__(self, name="BagOfWords regex jaccard distance eliminating stopwords", language="english"):
         super().__init__(name, language)
         self.stop = True
 
 
 class BagOfWords_l2(BagOfWords):
-    def __init__(self, name="BagOfWords regex l2 distance", disable=["ner"], language="english"):
+    def __init__(self, name="BagOfWords regex l2 distance", language="english"):
         super().__init__(name, language)
 
     def compare(self, a, b):
@@ -147,7 +148,7 @@ class BagOfWords_l2(BagOfWords):
 
 
 class BagOfWords_l2_stop(BagOfWords_l2):
-    def __init__(self, name="BagOfWords regex l2 distance eliminating stopwords", disable=["ner"], language="english"):
+    def __init__(self, name="BagOfWords regex l2 distance eliminating stopwords", language="english"):
         super().__init__(name, language)
         self.stop = True
 
@@ -156,6 +157,7 @@ class BagOfWords_lemma(BagOfWords):
 
     def __init__(self, name="BagOfWords Lemmatized", disable=["ner"], language="english"):
         super().__init__(name, language)
+        self.disable = disable
 
     def train(self, in_dataset, stop=True):
         """Creates a dictionary of occuring words for a given dataset."""
@@ -227,6 +229,15 @@ class BagOfWords_l2_lemma_stop(BagOfWords_l2_lemma):
 
 
 class spacy_sem_sim(Algorithm):
+    """
+    Implements a word2vec model by using spacy's existing vectors.
+
+    Parameters
+    ----------
+    name : A name for the algorithm.
+    language : the language of the dataset to be analyzed. Either "german" or "english". 
+    model : The model size: "sm" small, "md" medium, "lg" large. Not all sizes do exist for each language.
+    """
 
     def __init__(self, name="Spacy W2V", language="english", model="md"):
         super().__init__(name, language)
@@ -252,10 +263,17 @@ class spacy_sem_sim(Algorithm):
 
 
 class spacy_bert(Algorithm):
+    """
+    Implements a BERT model by using spacytransormer's existing vectors.
 
-    def __init__(self, name="spacy Bert", language="english", model="lg"):
+    Parameters
+    ----------
+    name : A name for the algorithm.
+    language : the language of the dataset to be analyzed. Either "german" or "english". 
+    """
+
+    def __init__(self, name="spacy Bert", language="english"):
         super().__init__(name, language)
-        self.model = model
 
     def compare(self, a, b):
         """Returns the cosine similarity between two matrices a,b."""
@@ -279,22 +297,30 @@ class spacy_bert(Algorithm):
 
 
 class gensim_wmd(Algorithm):
+    """
+    Implements a Word Mover Distance comparison by using gensims implementation of pyemds earth mover distance and the vectors from word2vec-google-news-300.
 
-    def __init__(self, name="gensim wmd", language="english"):
+    Parameters
+    ----------
+    name : A name for the algorithm.
+    language : The language of the dataset to be analyzed. Either "german" or "english". For now only english is available.
+    """
+    def __init__(self, name="gensim wmd", language = "english"):
         super().__init__(name, language)
 
     def compare(self, a, b):
         """Returns the cosine similarity between two matrices a,b."""
-        return 1-self.model.wmdistance(a,b)
+        index = WmdSimilarity([a], self.model)
+        return index[b]
 
     def create_vec(self, in_line):
         """Nothing to do here."""
-        spacy.load('en_core_web_sm')
-        stop_words = spacy.lang.en.stop_words.STOP_WORDS
-        return [w for w in in_line.lower().split() if w not in stop_words]
+        return in_line.split(" ")
 
     def train(self, in_dataset):
         print("Initializing gensim model")
-        self.model = api.load('word2vec-google-news-300')
-        self.model.init_sims(replace=True) 
-        self.trained = True
+        data = []
+        for column in in_dataset:
+            for sentence in column:
+                data.append(sentence.split(" "))
+        self.model = Word2Vec(data, min_count=1)
