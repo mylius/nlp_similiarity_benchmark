@@ -35,6 +35,7 @@ class Dataset:
         self.annots = defaultdict(int)
         self.phrase_vecs = {}
         self.correctness = []
+        # This is a threshold. If difference in similarity between two sentences is bigger than this and the user still disagress with the annotation the script will save the ids.
         self.rec_thresh = 0.12
         self.strong_disagreement = []
 

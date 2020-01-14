@@ -76,7 +76,7 @@ class Dataset_annot():
         self.sick = True
 
     def load_sts(self):
-        """Loads the SICK dataset."""
+        """Loads the sts dataset."""
         self.load("./data/sts_train/raw_gs.txt", [1, 2],
                   self.train_data, 0, self.train_score)
         self.load("./data/sts_test/raw_gs.txt", [1, 2],
