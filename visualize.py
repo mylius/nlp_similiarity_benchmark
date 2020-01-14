@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-df = pd.read_json("./data/results.json",encoding="utf8")
-df = df[["alg","db","pearson","spearman","mre","traintime","runtime"]]
+df = pd.read_json("./data/results copy.json",encoding="utf8")
+df = df[["alg","db","pearson","spearman","mse","traintime","runtime"]]
 
 sts = df.loc[df["db"] == "sts"]
 sick = df.loc[df["db"] == "sick"]

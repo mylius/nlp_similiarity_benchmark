@@ -166,7 +166,7 @@ def run_alg(alg, db):
     starttime = time.time()
     result["pearson"] = round(db.compare(pearsonr, alg)[0], 3)
     result["spearman"] = round(db.compare(spearmanr, alg)[0], 3)
-    result["mre"] = round(db.compare(mean_squared_error, alg), 3)
+    result["mse"] = round(db.compare(mean_squared_error, alg), 3)
     endtime = time.time()
     result["runtime"] = round(endtime-starttime, 3)
     result["alg"] = alg.name
