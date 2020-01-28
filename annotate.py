@@ -43,7 +43,7 @@ class Dataset:
         """Returns all strings in the dataset."""
         output = ""
         for value in self.data:
-            output += str(value)+"\n"
+            output += str(value) + "\n"
         return output
 
     def search(self, word):
@@ -99,8 +99,7 @@ class Dataset:
         self.refscores = np.zeros((self.id_len, self.id_len))
         for idx, vec1 in enumerate(self.phrase_vecs[alg]):
             for idy, vec2 in enumerate(self.phrase_vecs[alg]):
-                self.refscores[idx][idy] = alg.compare(
-                    vec1, vec2)
+                self.refscores[idx][idy] = alg.compare(vec1, vec2)
         with open("./data/{}-scores.json".format(self.hash), "w+") as f:
             json.dump(self.refscores.tolist(), f, indent=2)
 
@@ -117,34 +116,45 @@ class Dataset:
         self.load_files()
         while run:
             # check if all combinations have been annotated:
-            if len(self.annots) >= self.id_len*special.binom(self.id_len-1, 2):
+            if len(self.annots) >= self.id_len * special.binom(self.id_len - 1, 2):
                 print("All possible combinations have been annotated.")
                 break
             sentence_ids = list(np.random.choice(self.id_len, 3, replace=False))
             # make sure the triplet is new.
             if self.annots != {}:
-                while str((sentence_ids[0], sentence_ids[1], sentence_ids[2])) in self.annots or str((sentence_ids[0], sentence_ids[2], sentence_ids[1])) in self.annots or sentence_ids[0] == sentence_ids[1] or sentence_ids[0] == sentence_ids[2] or sentence_ids[1] == sentence_ids[2]:
+                while (
+                    str((sentence_ids[0], sentence_ids[1], sentence_ids[2]))
+                    in self.annots
+                    or str((sentence_ids[0], sentence_ids[2], sentence_ids[1]))
+                    in self.annots
+                    or sentence_ids[0] == sentence_ids[1]
+                    or sentence_ids[0] == sentence_ids[2]
+                    or sentence_ids[1] == sentence_ids[2]
+                ):
                     sentence_ids = list(np.random.choice(self.id_len, 3, replace=False))
             sentences = np.array(self.data)[sentence_ids]
             answer = ""
             while answer not in ["quit", "q", "s", "1", "2"]:
-                print("Reference:\n {}\n\n".format(sentences[0]), "Sentence 1:\n {}\n\n".format(
-                    sentences[1]), "Sentence 2:\n {}".format(sentences[2]))
+                print(
+                    "Reference:\n {}\n\n".format(sentences[0]),
+                    "Sentence 1:\n {}\n\n".format(sentences[1]),
+                    "Sentence 2:\n {}".format(sentences[2]),
+                )
                 answer = input().lower()
                 if answer == "quit" or answer == "q":
                     run = False
                 elif answer == "1":
                     print("Sentence 1 is more similar to reference sentence.\n")
-                    self.annots[str((sentence_ids[0],
-                                     sentence_ids[1], sentence_ids[2]))] += 1
-                    self.save_correct(
-                        sentence_ids[0], sentence_ids[1], sentence_ids[2])
+                    self.annots[
+                        str((sentence_ids[0], sentence_ids[1], sentence_ids[2]))
+                    ] += 1
+                    self.save_correct(sentence_ids[0], sentence_ids[1], sentence_ids[2])
                 elif answer == "2":
-                    self.annots[str((sentence_ids[0],
-                                     sentence_ids[2], sentence_ids[1]))] += 1
+                    self.annots[
+                        str((sentence_ids[0], sentence_ids[2], sentence_ids[1]))
+                    ] += 1
                     print("Sentence 2 is more similar to reference sentence.\n")
-                    self.save_correct(
-                        sentence_ids[0], sentence_ids[2], sentence_ids[1])
+                    self.save_correct(sentence_ids[0], sentence_ids[2], sentence_ids[1])
                 else:
                     print("Unrecognized answer.")
         self.save_results()
@@ -194,16 +204,35 @@ class Dataset:
             print("Unexpected annotation!")
             self.correctness.append(0)
 
-        if self.refscores[ref_id][sent_id2] - self.refscores[ref_id][sent_id1] > self.rec_thresh:
+        if (
+            self.refscores[ref_id][sent_id2] - self.refscores[ref_id][sent_id1]
+            > self.rec_thresh
+        ):
             print("Registered strong disagreement with algorithm")
-            self.strong_disagreement.append(str((ref_id,sent_id1,sent_id2)))
-
+            self.strong_disagreement.append(str((ref_id, sent_id1, sent_id2)))
 
     def evaluate(self):
         """Prints the percentage of correct annotations and a list of pairings where the user disagreed eventhough the algorithm had a clear preference."""
         if len(self.correctness) > 0:
-            print("Correct percentage is: {}%".format(round(sum(self.correctness)/len(self.correctness)*100,2)))
+            print(
+                "Correct percentage is: {}%".format(
+                    round(sum(self.correctness) / len(self.correctness) * 100, 2)
+                )
+            )
+            print(
+                "Triplets were the algorithm was pretty certain, but the annotation disagreed."
+            )
             print(self.strong_disagreement)
+            # one possible way to create scores.
+            for key, value in self.annots.items():
+                key = tuple(map(int, key[1:-1].split(",")))
+                if key[0] not in score:
+                    score[key[0]] = defaultdict(int)
+                score[key[0]][key[1]] += 1
+                score[key[0]][key[2]] = score[key[0]][key[2]]
+
+            print("The scores are:")
+            print(score)
 
 
 if __name__ == "__main__":
