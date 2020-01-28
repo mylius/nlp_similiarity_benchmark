@@ -237,6 +237,6 @@ class Dataset:
 
 if __name__ == "__main__":
     db = Dataset("nachrichten")
-    db.load_data("./data/test.txt")
+    db.load_data("./data/nachrichten.txt")
     db.run_annot()
     db.evaluate()
