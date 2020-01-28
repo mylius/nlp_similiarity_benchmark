@@ -4,6 +4,7 @@ import hashlib
 import json
 from os import path
 from collections import defaultdict
+from collections import OrderedDict
 from scipy import special
 from itertools import permutations
 
@@ -85,7 +86,7 @@ class Dataset:
             BERT and w2v are good candidates since they come with pretrained models.
         """
         if not alg.trained:
-            alg.train(self.data,[])
+            alg.train(self.data, [])
         self.phrase_vecs[alg] = []
         print("Creating Vectors")
         for item in self.data:
@@ -211,6 +212,26 @@ class Dataset:
             print("Registered strong disagreement with algorithm")
             self.strong_disagreement.append(str((ref_id, sent_id1, sent_id2)))
 
+    def create_scores(self):
+        """Takes the annotations, assigns points for 'winning' a comparison and than normalizes over the scores. 
+        This is only really usefull for thorougly annotated data.
+        Returns dictionary, key is the id of a sentence and the values are dictionaries, 
+        where the key is the corresponding sentence and the value the score."""
+        score = {}
+        for key, value in self.annots.items():
+            key = tuple(map(int, key[1:-1].split(",")))
+            if key[0] not in score:
+                score[key[0]] = defaultdict(int)
+            score[key[0]][key[1]] += 1
+            score[key[0]][key[2]] = score[key[0]][key[2]]
+        # to be done ranking:
+        relatedness_score = {}
+        for key, sentence_scores in score.items():
+            factor = 1.0 / sum(sentence_scores.values())
+            for key, value in sentence_scores.items():
+                sentence_scores[key] = value * factor
+        return score
+
     def evaluate(self):
         """Prints the percentage of correct annotations and a list of pairings where the user disagreed eventhough the algorithm had a clear preference."""
         if len(self.correctness) > 0:
@@ -219,14 +240,16 @@ class Dataset:
                     round(sum(self.correctness) / len(self.correctness) * 100, 2)
                 )
             )
-            print(
-                "Triplets were the algorithm was pretty certain, but the annotation disagreed."
-            )
-            print(self.strong_disagreement)
+            if self.strong_disagreement != []:
+                print(
+                    "Triplets were the algorithm was pretty certain, but the annotation disagreed."
+                )
+                print(self.strong_disagreement)
             # one possible way to create scores.
 
-
-
+            relatedness_scores = self.create_scores()
+            print("The relatedness scores are:")
+            print(relatedness_scores)
 
 
 if __name__ == "__main__":
