@@ -85,7 +85,7 @@ class Dataset:
             BERT and w2v are good candidates since they come with pretrained models.
         """
         if not alg.trained:
-            alg.train(self.data)
+            alg.train(self.data,[])
         self.phrase_vecs[alg] = []
         print("Creating Vectors")
         for item in self.data:
