@@ -114,7 +114,7 @@ class Dataset:
         run = True
         alg = algs.spacy_sem_sim(language="german")
         self.id_len = len(self.data)
-        self.load_files()
+        self.load_files(alg)
         while run:
             # check if all combinations have been annotated:
             if len(self.annots) >= self.id_len * special.binom(self.id_len - 1, 2):
@@ -169,7 +169,7 @@ class Dataset:
         with open("./data/{}-disagreement.json".format(self.hash), "w+") as f:
             json.dump(self.strong_disagreement, f, indent=2)
 
-    def load_files(self):
+    def load_files(self,alg):
         """ Saves the saved results of annotations, their correctness and strong disagreements. """
         if path.exists("./data/{}-scores.json".format(self.hash)):
             with open("./data/{}-scores.json".format(self.hash)) as f:
