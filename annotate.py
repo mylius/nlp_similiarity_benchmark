@@ -224,15 +224,9 @@ class Dataset:
             )
             print(self.strong_disagreement)
             # one possible way to create scores.
-            for key, value in self.annots.items():
-                key = tuple(map(int, key[1:-1].split(",")))
-                if key[0] not in score:
-                    score[key[0]] = defaultdict(int)
-                score[key[0]][key[1]] += 1
-                score[key[0]][key[2]] = score[key[0]][key[2]]
 
-            print("The scores are:")
-            print(score)
+
+
 
 
 if __name__ == "__main__":
