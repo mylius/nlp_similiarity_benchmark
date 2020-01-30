@@ -56,8 +56,8 @@ export default {
         },
         /**
          * A simple randmon choice with no replacing algorithm.
-         * @param {Array} InArray: The array to be chosen from.
-         * @param {Number} len: The number of values to be chosen.
+         * @param {Array} InArray The array to be chosen from.
+         * @param {Number} len The number of values to be chosen.
          * @return {Array}
          */
         randomChoiceNoReplace(InArray, len) {
@@ -110,8 +110,8 @@ export default {
         /**
          * Annotates the reference sentences:
          * Writes a dict into .annotations of the reference sentence with "(a,b)" being the key and increasing the value by one.
-         * @param {number} a:The id of the the sentence more similar to the reference.
-         * @param {number} b:The id of the the sentence less similar to the reference.
+         * @param {number} a The id of the the sentence more similar to the reference.
+         * @param {number} b The id of the the sentence less similar to the reference.
          */
         annotate(a,b) {
             if (this.sentences[this.ids[0]].annotations["("+this.ids[a]+","+this.ids[b]+")"] == null){
@@ -129,10 +129,13 @@ export default {
     display: grid;
     grid-template-columns: repeat(1,1fr);
     grid-auto-rows: minmax(50px, auto);
+    margin-left:10%;
+    margin-right:10%;
 }
 .comp {
     display: grid;
     grid-template-columns: repeat(2,1fr);
+    grid-column-gap: 20px;
     grid-auto-rows: minmax(50px, auto);
 }
 </style>

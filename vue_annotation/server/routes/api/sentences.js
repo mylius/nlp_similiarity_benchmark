@@ -1,18 +1,22 @@
 
 const express = require('express');
 const mongodb = require('mongodb');
-
+const Server = require('mongodb').Server;
 const router = express.Router();
 const ObjectID = require('mongodb').ObjectID
 // Get sentences
 
-// When using login data use mongodb.MongoClient.connect('mongodb://user:password@host:post/', [...] instead.
-mongodb.MongoClient.connect('mongodb://localhost:27017/',  {
+var host = "localhost"
+var port = 27017
+var user = ""
+var password = ""
+// When using login data use mongodb.MongoClient.connect('mongodb://user:password@host:port/', [...] instead. !!!SAME FOR LINE 40!!!
+mongodb.MongoClient.connect(new Server(host, port),  {
   useNewUrlParser: true
 }, (err,client) =>{
   if(err) return console.log(err)
   //scheme is: sentences = client.db("dbname").collection("collection_name")
-  sentences = client.db("annotationDB").collection("sentences")
+  sentences = client.db("annotations").collection("sentences")
 })
 
 router.get('/', async (req, res) => {
@@ -33,13 +37,12 @@ router.put('/:id', (req, res) => {
 })
 
 async function loadSentencesCollection() {
-    const client = await mongodb.MongoClient.connect(
-      'mongodb://localhost:27017/',
+    const client = await mongodb.MongoClient.connect(new Server(host, port),
       {
         useNewUrlParser: true
       }
     );
-    return client.db('annotationDB').collection('sentences');
+    return client.db('annotations').collection('sentences');
   }
 
 
