@@ -6,7 +6,7 @@ LDAP_USER_NAME = 'your_ldap_user_name'
 LDAP_PASSWORD = 'your_ldap_password'
 MONGODB_HOST = 'localhost'
 MONGODB_PORT = 'port_number_of_MongoDB (usually 27016)' 
-MONGODB_AUTHENTICATION_DB = 'annotations'
+MONGODB_AUTHENTICATION_DB = 'your_mongodb_authentication_db'
 MONGODB_USER_NAME = 'your_mongodb_user_name'
 MONGODB_PASSWORD = 'your_mongodb_password'
 #Replace ../data/nachrichten.txt with the actual dataset
@@ -40,6 +40,7 @@ with SSHTunnelForwarder((SSH_HOST, 22), ssh_username=LDAP_USER_NAME, ssh_passwor
         print('authenticated on mongodb')
         print('collections in Db ' + MONGODB_AUTHENTICATION_DB + ': ')
         print('\t' + str(client[MONGODB_AUTHENTICATION_DB].collection_names()))
+        mongo_db = client[MONGODB_AUTHENTICATION_DB]
         mongo_col = MONGODB_AUTHENTICATION_DB[collection_name]
         for item in sentences:
             mongo_col.inser_one(item)
