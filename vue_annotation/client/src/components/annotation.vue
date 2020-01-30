@@ -33,17 +33,13 @@ export default {
     data(){
         return {
             sentences: [],
-            error: '',
-            text: '',
-            ids: [...Array(3).keys()],
+            error: String,
+            ids: [],
         }
     },
     async created() {
         try{
             this.sentences = await DataService.getSentences();
-            for (var sent in this.sentences){
-                this.sentences[sent].annotations = {};
-            }
             this.setIds();
         } catch(err) {
             this.error = err.message;
@@ -58,6 +54,12 @@ export default {
                 annotations: this.sentences[this.ids[0]].annotations
             })
         },
+        /**
+         * A simple randmon choice with no replacing algorithm.
+         * @param {Array} InArray: The array to be chosen from.
+         * @param {Number} len: The number of values to be chosen.
+         * @return {Array}
+         */
         randomChoiceNoReplace(InArray, len) {
             var bucket = [];
             var OutArray = new Array(len).fill(null);
@@ -72,21 +74,45 @@ export default {
             }
             return OutArray
         },
+        /**
+         * Randomly selects the ids for the 3 sentences.
+         * @return {Array} An array of 3 numbers.
+         */
         setIds() {
             this.ids = this.randomChoiceNoReplace([...Array(this.sentences.length).keys()], 3);
         },
+        /**
+         * The actions to be done when selecting button 1. 
+         * Creates the annotation, updates the sentence annotation in the mongodb and choses 3 new sentences.
+         */
         select1() {
             this.annotate(1,2); 
             this.updateSentence();
             this.ids = this.randomChoiceNoReplace([...Array(this.sentences.length).keys()], 3);
             },
+        /**
+         * The actions to be done when selecting button 2. 
+         * Creates the annotation, updates the sentence annotation in the mongodb and choses 3 new sentences.
+         */
         select2() {
+            
             this.annotate(2,1);
+            this.updateSentence();
             this.ids = this.randomChoiceNoReplace([...Array(this.sentences.length).keys()], 3);
         },
+        /**
+         * The actions to be done when selecting the skip button. 
+         * Choses 3 new sentences.
+         */
         skip() {
             this.ids = this.randomChoiceNoReplace([...Array(this.sentences.length).keys()], 3);
         },
+        /**
+         * Annotates the reference sentences:
+         * Writes a dict into .annotations of the reference sentence with "(a,b)" being the key and increasing the value by one.
+         * @param {number} a:The id of the the sentence more similar to the reference.
+         * @param {number} b:The id of the the sentence less similar to the reference.
+         */
         annotate(a,b) {
             if (this.sentences[this.ids[0]].annotations["("+this.ids[a]+","+this.ids[b]+")"] == null){
                this.sentences[this.ids[0]].annotations["("+this.ids[a]+","+this.ids[b]+")"] = 1

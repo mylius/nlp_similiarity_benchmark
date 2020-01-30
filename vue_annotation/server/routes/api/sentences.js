@@ -6,11 +6,13 @@ const router = express.Router();
 const ObjectID = require('mongodb').ObjectID
 // Get sentences
 
+// When using login data use mongodb.MongoClient.connect('mongodb://user:password@host:post/', [...] instead.
 mongodb.MongoClient.connect('mongodb://localhost:27017/',  {
   useNewUrlParser: true
 }, (err,client) =>{
   if(err) return console.log(err)
-  sentences = client.db("annotationDB")
+  //scheme is: sentences = client.db("dbname").collection("collection_name")
+  sentences = client.db("annotationDB").collection("sentences")
 })
 
 router.get('/', async (req, res) => {
