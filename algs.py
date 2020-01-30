@@ -1,19 +1,37 @@
-import util
-from functools import lru_cache
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import jaccard_score
-import re
-import spacy
 import numpy as np
 from sklearn import preprocessing
+
+# bow
+import re # also lstm
 from scipy import sparse
 from collections import defaultdict
 from collections import Counter
 import warnings
 from sklearn.utils.validation import DataConversionWarning
+
+# w2v & bert
+import spacy
+
+# wmd
 import gensim.downloader as api
 from gensim.models import Word2Vec
 from gensim.similarities import WmdSimilarity
+
+# LSTM
+import pandas as pd
+from keras.preprocessing.sequence import pad_sequences
+from keras.models import Model
+from keras.layers import Input, Embedding, LSTM, Lambda
+import keras.backend as K
+from keras.optimizers import Adadelta
+from keras.callbacks import ModelCheckpoint
+from sklearn.model_selection import train_test_split
+import itertools
+import datetime
+from time import time
+import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore", category=DataConversionWarning)
 
@@ -31,7 +49,7 @@ class Algorithm:
     def train(self, in_dataset, in_score):
         """
         Trains the algorithm on a given list of strings.
-        
+
         Parameters
         ----------
         in_dataset : Takes a list containing two lists of strings.
@@ -41,7 +59,7 @@ class Algorithm:
 
     def create_vec(self, in_line):
         """Returns a vector that can be used to calculate the difference between strings, when given a string.
-        
+
         Parameters
         ----------
         in_line : A string for which a vector should be calculated.
@@ -50,7 +68,7 @@ class Algorithm:
 
     def compare(self, a, b):
         """Returns the cosine similarity between two matrices a,b.
-        
+
         Parameters
         ----------
         a : A matrix.
@@ -62,7 +80,7 @@ class Algorithm:
 class BagOfWords(Algorithm):
     """
     Implements the BagOfWords algorithm.
-    
+
     """
 
     def __init__(self, name="BagOfWords regex", language="english"):
@@ -347,7 +365,7 @@ class gensim_wmd(Algorithm):
     def compare(self, a, b):
         """
         Returns the word mover distance between two lists a,b.
-        
+
         Parameters
         ----------
         a : The first list of strings to be compared to the second list.
@@ -369,7 +387,7 @@ class gensim_wmd(Algorithm):
     def train(self, in_dataset, in_score):
         """
         Trains the model on all vectors in the in_dataset.
-        
+
         Parameters
         ----------
         in_dataset : The dataset to train on.
@@ -382,3 +400,248 @@ class gensim_wmd(Algorithm):
         self.model = Word2Vec(data, min_count=1)
         self.trained = True
 
+
+class MALSTM(Algorithm):
+    """Implements a Manhattan-LSTM which calculates the similarity between two strings.
+    
+    This is an adaptation of the network presented in https://medium.com/mlreview/implementing-malstm-on-kaggles-quora-question-pairs-competition-8b31b0b16a07
+    Source: https://github.com/eliorc/Medium/blob/master/MaLSTM.ipynb"""
+
+    def __init__(
+        self, name="LSTM", language="english", epochs = 100,
+    ):
+        super().__init__(name, language)
+        self.n_epoch = epochs  #I recommend a minimum of 7 to get somewhat decent results.
+        self.vocabulary = dict()
+        self.word2vec = None
+        self.malstm = None
+        if self.language == "german":
+            self.nlp = spacy.load("de_core_news_sm")
+            self.stop_list = spacy.lang.de.stop_words.STOP_WORDS
+        if self.language == "english":
+            self.nlp = spacy.load("en_core_web_sm")
+            self.stop_list = spacy.lang.en.stop_words.STOP_WORDS
+
+    def text_to_word_list(self, text):
+        """ Pre process and convert texts to a list of words """
+        text = str(text)
+        text = text.lower()
+
+        # Clean the text
+        text = re.sub(r"[^A-Za-z0-9^,!.\/'+-=]", " ", text)
+        text = re.sub(r"what's", "what is ", text)
+        text = re.sub(r"\'s", " ", text)
+        text = re.sub(r"\'ve", " have ", text)
+        text = re.sub(r"can't", "cannot ", text)
+        text = re.sub(r"n't", " not ", text)
+        text = re.sub(r"i'm", "i am ", text)
+        text = re.sub(r"\'re", " are ", text)
+        text = re.sub(r"\'d", " would ", text)
+        text = re.sub(r"\'ll", " will ", text)
+        text = re.sub(r",", " ", text)
+        text = re.sub(r"\.", " ", text)
+        text = re.sub(r"!", " ! ", text)
+        text = re.sub(r"\/", " ", text)
+        text = re.sub(r"\^", " ^ ", text)
+        text = re.sub(r"\+", " + ", text)
+        text = re.sub(r"\-", " - ", text)
+        text = re.sub(r"\=", " = ", text)
+        text = re.sub(r"'", " ", text)
+        text = re.sub(r"(\d+)(k)", r"\g<1>000", text)
+        text = re.sub(r":", " : ", text)
+        text = re.sub(r" e g ", " eg ", text)
+        text = re.sub(r" b g ", " bg ", text)
+        text = re.sub(r" u s ", " american ", text)
+        text = re.sub(r"\0s", "0", text)
+        text = re.sub(r" 9 11 ", "911", text)
+        text = re.sub(r"e - mail", "email", text)
+        text = re.sub(r"j k", "jk", text)
+        text = re.sub(r"\s{2,}", " ", text)
+
+        text = text.split()
+
+        return text
+
+
+    def exponent_neg_manhattan_distance(self, left, right):
+            """ Helper function for the similarity estimate of the LSTMs outputs"""
+            return K.exp(-K.sum(K.abs(left - right), axis=1, keepdims=True))
+
+    def train(self, in_dataset, in_score):
+        """
+        Trains the algorithm on a given list of strings.
+
+        Parameters
+        ----------
+        in_dataset : Takes a list containing two lists of strings.
+        in_score : Takes a list of floating point values.
+        """
+        
+        for i,item in enumerate(in_score):
+            in_score[i] = round(item)
+        df = pd.DataFrame(list(zip(in_dataset[0], in_dataset[1], in_score)),columns=["string_1","string_2","score"])
+        vocabulary = dict()
+        inverse_vocabulary = [
+            "<unk>"
+        ]  # '<unk>' will never be used, it is only a placeholder for the [0, 0, ....0] embedding
+        string_cols = ["string_1","string_2"]
+        for index, row in df.iterrows():
+            # Iterate through the text of both strings of the row
+            for text in string_cols:
+
+                q2n = []  # q2n -> string numbers representation
+                for word in self.text_to_word_list(row[text]):
+
+                    # Check for unwanted words
+                    if word in self.stop_list:
+                        continue
+
+                    if word not in vocabulary:
+                        vocabulary[word] = len(inverse_vocabulary)
+                        q2n.append(len(inverse_vocabulary))
+                        inverse_vocabulary.append(word)
+                    else:
+                        q2n.append(vocabulary[word])
+
+                # Replace strings as word to string as number representation
+                df.set_value(index, text, q2n)
+        embedding_dim = 512
+        if self.word2vec == None:
+            self.word2vec = Word2Vec(vocabulary.keys(), min_count=1 , size = 512, workers = 10)
+
+        embedding_dim = 512
+        # This will be the embedding matrix
+        embeddings = 1 * np.random.randn(len(vocabulary) + 1, embedding_dim)
+        embeddings[0] = 0  # So that the padding will be ignored
+        for word, index in vocabulary.items():
+            if word in self.word2vec.wv.vocab:
+                embeddings[index] = self.word2vec.wv[word]
+
+
+        # prep data
+
+        max_seq_length = max(
+            df.string_1.map(lambda x: len(x)).max(),
+            df.string_2.map(lambda x: len(x)).max(),
+        )
+
+        # Split to train validation
+        validation_size = int(len(df) * 0.15)
+        training_size = len(df) - validation_size
+
+        X = df[string_cols]
+        Y = df["score"]
+
+        X_train, X_validation, Y_train, Y_validation = train_test_split(
+            X, Y, test_size=validation_size
+        )
+
+        # Split to dicts
+        X_train = {"left": X_train.string_1, "right": X_train.string_2}
+        X_validation = {"left": X_validation.string_1, "right": X_validation.string_2}
+
+        # Convert labels to their numpy representations
+        Y_train = Y_train.values
+        Y_validation = Y_validation.values
+
+        # Zero padding
+        for dataset, side in itertools.product(
+            [X_train, X_validation], ["left", "right"]
+        ):
+            dataset[side] = pad_sequences(dataset[side], maxlen=max_seq_length)
+
+
+        n_hidden = 70
+        gradient_clipping_norm = 1.25
+        batch_size = 64
+
+        # The visible layer
+        left_input = Input(shape=(max_seq_length,), dtype="int32")
+        right_input = Input(shape=(max_seq_length,), dtype="int32")
+
+        embedding_layer = Embedding(
+            len(embeddings),
+            embedding_dim,
+            weights=[embeddings],
+            input_length=max_seq_length,
+            trainable=False,
+        )
+
+        # Embedded version of the inputs
+        encoded_left = embedding_layer(left_input)
+        encoded_right = embedding_layer(right_input)
+
+        # Since this is a siamese network, both sides share the same LSTM
+        shared_lstm = LSTM(n_hidden)
+
+        left_output = shared_lstm(encoded_left)
+        right_output = shared_lstm(encoded_right)
+
+        # Calculates the distance as defined by the MaLSTM model
+        malstm_distance = Lambda(
+            function=lambda x: self.exponent_neg_manhattan_distance(x[0], x[1]),
+            output_shape=lambda x: (x[0][0], 1),
+        )([left_output, right_output])
+
+        # Pack it all up into a model
+        self.malstm = Model([left_input, right_input], [malstm_distance])
+
+        # Adadelta optimizer, with gradient clipping by norm
+        optimizer = Adadelta(clipnorm=gradient_clipping_norm)
+
+        self.malstm.compile(loss="mean_squared_error", optimizer=optimizer, metrics=["accuracy"])
+
+        # Start training
+        training_start_time = time()
+
+        malstm_trained = self.malstm.fit(
+            [X_train["left"], X_train["right"]],
+            Y_train,
+            batch_size=batch_size,
+            nb_epoch=self.n_epoch,
+            validation_data=([X_validation["left"], X_validation["right"]], Y_validation),
+        )
+        #self.malstm.save('./models/MaLSTM.h5')
+        print(
+            "Training time finished.\n{} epochs in {}".format(
+                self.n_epoch, datetime.timedelta(seconds=time() - training_start_time)
+            )
+        )
+
+        plt.plot(malstm_trained.history["acc"])
+        plt.plot(malstm_trained.history["val_acc"])
+        plt.title("Model Accuracy")
+        plt.ylabel("Accuracy")
+        plt.xlabel("Epoch")
+        plt.legend(["Train", "Validation"], loc="upper left")
+        plt.show()
+
+        # Plot loss
+        plt.plot(malstm_trained.history["loss"])
+        plt.plot(malstm_trained.history["val_loss"])
+        plt.title("Model Loss")
+        plt.ylabel("Loss")
+        plt.xlabel("Epoch")
+        plt.legend(["Train", "Validation"], loc="upper right")
+        plt.show()
+
+        self.trained = True
+
+    def create_vec(self, in_line):
+        """Returns a vector that can be used to calculate the difference between strings, when given a string.
+
+        Parameters
+        ----------
+        in_line : A string for which a vector should be calculated.
+        """
+        raise NotImplementedError("Create_vec method not implemented")
+
+    def compare(self, a, b):
+        """Returns the cosine similarity between two matrices a,b.
+
+        Parameters
+        ----------
+        a : A matrix.
+        b : Another matrix.
+        """
+        return cosine_similarity(a, b)
