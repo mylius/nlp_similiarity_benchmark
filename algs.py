@@ -4,7 +4,7 @@ import numpy as np
 from sklearn import preprocessing
 
 # bow
-import re # also lstm
+import re  # also lstm
 from scipy import sparse
 from collections import defaultdict
 from collections import Counter
@@ -18,7 +18,10 @@ import spacy
 import gensim.downloader as api
 from gensim.models import Word2Vec
 from gensim.similarities import WmdSimilarity
-
+# d2v
+from gensim.models.doc2vec import Doc2Vec
+from gensim.models.doc2vec import TaggedDocument
+from scipy.spatial.distance import cosine as sci_cos
 # LSTM
 import pandas as pd
 from keras.preprocessing.sequence import pad_sequences
@@ -32,6 +35,7 @@ import itertools
 import datetime
 from time import time
 import matplotlib.pyplot as plt
+import gensim.downloader as api
 
 warnings.filterwarnings("ignore", category=DataConversionWarning)
 
@@ -400,6 +404,65 @@ class gensim_wmd(Algorithm):
         self.model = Word2Vec(data, min_count=1)
         self.trained = True
 
+class gensim_d2v(Algorithm):
+    """
+    Implements a Doc2Vec comparison by using gensims implementation and training it on the datasets.
+
+    Parameters
+    ----------
+    name : A name for the algorithm.
+    language : The language of the dataset to be analyzed. Either "german" or "english". The language is irrelevant for this particular algorithm.
+    """
+
+    def __init__(self, name="gensim d2v", language="english"):
+        super().__init__(name, language)
+
+    def compare(self, a, b):
+        """
+        Returns the cosine_similarity of two lists a,b.
+
+        Parameters
+        ----------
+        a : The first list of strings to be compared to the second list.
+        a : The second list of strings to be compared to the first list.
+        """
+        return 1-sci_cos(a,b)
+
+    def create_vec(self, in_line):
+        """
+        Returns d2v vectors, generated using the trained model.
+
+        Parameters
+        ----------
+        inline : The string to be split.
+        """
+        result= self.d2v.infer_vector(in_line.split())
+        return result
+
+    def train(self, in_dataset, in_score):
+        """
+        Trains the model on all sentences in the in_dataset.
+
+        Parameters
+        ----------
+        in_dataset : The dataset to train on.
+        in_score : The socres for the sentence pairs.
+        """
+        print("Initializing gensim model")
+        data = []
+        self.id=0
+        for col in in_dataset:
+            for sentence in col:
+                data.append(TaggedDocument(sentence.split(),str(self.id)))
+                self.id+=1
+        self.d2v = Doc2Vec(vector_size=300, window=10, min_count=5, workers=11,alpha=0.025, min_alpha=0.025) # use fixed learning ratemodel.build_vocab(it)for epoch in range(10):
+        self.d2v.build_vocab(data)
+        eps = 10
+        for item in range(eps):
+            self.d2v.train(data,total_examples=self.d2v.corpus_count, epochs=eps, start_alpha=0.025)
+        self.trained = True
+
+
 
 class MALSTM(Algorithm):
     """Implements a Manhattan-LSTM which calculates the similarity between two strings.
@@ -408,10 +471,12 @@ class MALSTM(Algorithm):
     Source: https://github.com/eliorc/Medium/blob/master/MaLSTM.ipynb"""
 
     def __init__(
-        self, name="LSTM", language="english", epochs = 100,
+        self, name="LSTM", language="english", epochs=1500,
     ):
         super().__init__(name, language)
-        self.n_epoch = epochs  #I recommend a minimum of 7 to get somewhat decent results.
+        self.n_epoch = (
+            epochs  # I recommend a minimum of 7 to get somewhat decent results.
+        )
         self.vocabulary = dict()
         self.word2vec = None
         self.malstm = None
@@ -462,10 +527,9 @@ class MALSTM(Algorithm):
 
         return text
 
-
     def exponent_neg_manhattan_distance(self, left, right):
-            """ Helper function for the similarity estimate of the LSTMs outputs"""
-            return K.exp(-K.sum(K.abs(left - right), axis=1, keepdims=True))
+        """ Helper function for the similarity estimate of the LSTMs outputs"""
+        return K.exp(-K.sum(K.abs(left - right), axis=1, keepdims=True))
 
     def train(self, in_dataset, in_score):
         """
@@ -476,21 +540,24 @@ class MALSTM(Algorithm):
         in_dataset : Takes a list containing two lists of strings.
         in_score : Takes a list of floating point values.
         """
-        
-        for i,item in enumerate(in_score):
-            in_score[i] = round(item)
-        df = pd.DataFrame(list(zip(in_dataset[0], in_dataset[1], in_score)),columns=["string_1","string_2","score"])
+
+        for i, item in enumerate(in_score):
+            in_score[i] = round(item,1)
+        df = pd.DataFrame(
+            list(zip(in_dataset[0], in_dataset[1], in_score)),
+            columns=["string_1", "string_2", "score"],
+        )
         vocabulary = dict()
         inverse_vocabulary = [
             "<unk>"
         ]  # '<unk>' will never be used, it is only a placeholder for the [0, 0, ....0] embedding
-        string_cols = ["string_1","string_2"]
+        string_cols = ["string_1", "string_2"]
         for index, row in df.iterrows():
             # Iterate through the text of both strings of the row
             for text in string_cols:
 
                 q2n = []  # q2n -> string numbers representation
-                for word in self.text_to_word_list(row[text]):
+                for word in row[text].split():
 
                     # Check for unwanted words
                     if word in self.stop_list:
@@ -505,18 +572,15 @@ class MALSTM(Algorithm):
 
                 # Replace strings as word to string as number representation
                 df.set_value(index, text, q2n)
-        embedding_dim = 512
+        embedding_dim = 1024
         if self.word2vec == None:
-            self.word2vec = Word2Vec(vocabulary.keys(), min_count=1 , size = 512, workers = 10)
-
-        embedding_dim = 512
+            self.word2vec = Word2Vec(vocabulary.keys(), min_count=1 , size = embedding_dim, workers = 10)
         # This will be the embedding matrix
         embeddings = 1 * np.random.randn(len(vocabulary) + 1, embedding_dim)
         embeddings[0] = 0  # So that the padding will be ignored
         for word, index in vocabulary.items():
             if word in self.word2vec.wv.vocab:
                 embeddings[index] = self.word2vec.wv[word]
-
 
         # prep data
 
@@ -525,35 +589,23 @@ class MALSTM(Algorithm):
             df.string_2.map(lambda x: len(x)).max(),
         )
 
-        # Split to train validation
-        validation_size = int(len(df) * 0.15)
-        training_size = len(df) - validation_size
 
         X = df[string_cols]
         Y = df["score"]
 
-        X_train, X_validation, Y_train, Y_validation = train_test_split(
-            X, Y, test_size=validation_size
-        )
-
         # Split to dicts
-        X_train = {"left": X_train.string_1, "right": X_train.string_2}
-        X_validation = {"left": X_validation.string_1, "right": X_validation.string_2}
+        X = {"left": X.string_1, "right": X.string_2}
 
         # Convert labels to their numpy representations
-        Y_train = Y_train.values
-        Y_validation = Y_validation.values
+        Yn = Y.values
 
         # Zero padding
-        for dataset, side in itertools.product(
-            [X_train, X_validation], ["left", "right"]
-        ):
+        for dataset, side in itertools.product([X], ["left", "right"]):
             dataset[side] = pad_sequences(dataset[side], maxlen=max_seq_length)
 
-
-        n_hidden = 70
+        n_hidden = 75
         gradient_clipping_norm = 1.25
-        batch_size = 64
+        batch_size = 15
 
         # The visible layer
         left_input = Input(shape=(max_seq_length,), dtype="int32")
@@ -589,19 +641,22 @@ class MALSTM(Algorithm):
         # Adadelta optimizer, with gradient clipping by norm
         optimizer = Adadelta(clipnorm=gradient_clipping_norm)
 
-        self.malstm.compile(loss="mean_squared_error", optimizer=optimizer, metrics=["accuracy"])
+        self.malstm.compile(
+            loss="mean_squared_error", optimizer=optimizer, metrics=["accuracy"]
+        )
 
         # Start training
         training_start_time = time()
 
         malstm_trained = self.malstm.fit(
-            [X_train["left"], X_train["right"]],
-            Y_train,
+            [X["left"], X["right"]],
+            Y,
             batch_size=batch_size,
             nb_epoch=self.n_epoch,
-            validation_data=([X_validation["left"], X_validation["right"]], Y_validation),
+            validation_split=0.15
         )
-        #self.malstm.save('./models/MaLSTM.h5')
+        self.malstm.save("./models/MaLSTM.h5")
+        # self.malstm.save('./models/MaLSTM.h5')
         print(
             "Training time finished.\n{} epochs in {}".format(
                 self.n_epoch, datetime.timedelta(seconds=time() - training_start_time)
