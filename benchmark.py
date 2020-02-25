@@ -10,8 +10,7 @@ import time
 import json
 from collections import OrderedDict
 
-
-class Dataset_annot():
+class Dataset_annot:
     """
     A class that stores a dataset of annotated semantic similarity data and allows the benchmarking of algorithms on it.
     There are loading functions for the SICK and the STS dataset predefinded [load_sts(),load_sick()].
@@ -27,9 +26,10 @@ class Dataset_annot():
     db = Dataset_annot("sick")
     db.load_sick()
     alg = algs.BagOfWords()
-    alg.train(db.train_data)
+    alg.train(db.train_data,db.train_score)
     db.compare(pearsonr, alg)
     """
+
     def __init__(self, name):
         self.name = name
         self.train_data = [[], []]
@@ -54,8 +54,8 @@ class Dataset_annot():
         data : The data field in Dataset_annot() that should be filled.
         score_col : Index of the column in the file containing the scores.
         scores :  The score field in Dataset_annot() that should be filled.
-        score_col : Index of the column in the file containing the ids.
-        scores :  The id field in Dataset_annot() that should be filled.
+        id_col : Index of the column in the file containing the ids.
+        ids :  The id field in Dataset_annot() that should be filled.
         """
         with open(path, "r") as f:
             next(f)
@@ -67,20 +67,65 @@ class Dataset_annot():
                 if id_col != None:
                     ids.append(line[id_col])
 
+    def load_custom(self, path_train, path_test,data_cols,score_col, id_col = None):
+        """Loads a custom dataset.
+
+         Parameters
+        ----------
+        path_train : path to the file containing the training data.
+        path_test : path to the file containing the test data.
+        data_cols : Indizes of the columns containing the sentences as a list.
+        score_col : Index of the column in the file containing the scores.
+        id_col : Index of the column in the file containing the ids.
+        """
+        #train:
+        self.load(path_train,
+            data_cols,
+            self.train_data,
+            score_col,
+            self.train_score,
+            id_col,
+            self.train_ids,)
+        #test:
+        self.load(path_test,
+            data_cols,
+            self.test_data,
+            score_col,
+            self.test_score,
+            id_col,
+            self.test_ids,)
+
+
     def load_sick(self):
         """Loads the SICK dataset."""
-        self.load("./data/SICK_train.txt", [1, 2],
-                  self.train_data, 3, self.train_score, 0, self.train_ids)
-        self.load("./data/SICK.txt", [1, 2],
-                  self.test_data, 3, self.test_score, 0, self.test_ids)
+        self.load(
+            "./data/SICK_train.txt",
+            [1, 2],
+            self.train_data,
+            3,
+            self.train_score,
+            0,
+            self.train_ids,
+        )
+        self.load(
+            "./data/SICK.txt",
+            [1, 2],
+            self.test_data,
+            3,
+            self.test_score,
+            0,
+            self.test_ids,
+        )
         self.sick = True
 
     def load_sts(self):
         """Loads the sts dataset."""
-        self.load("./data/sts_train/raw_gs.txt", [1, 2],
-                  self.train_data, 0, self.train_score)
-        self.load("./data/sts_test/raw_gs.txt", [1, 2],
-                  self.test_data, 0, self.test_score)
+        self.load(
+            "./data/sts_train/raw_gs.txt", [1, 2], self.train_data, 0, self.train_score
+        )
+        self.load(
+            "./data/sts_test/raw_gs.txt", [1, 2], self.test_data, 0, self.test_score
+        )
         self.sts = True
 
     def norm_results(self, feature_range):
@@ -95,7 +140,8 @@ class Dataset_annot():
         for key in self.results:
             if key not in self.normed_results:
                 self.normed_results[key] = preprocessing.minmax_scale(
-                    self.results[key], feature_range)
+                    self.results[key], feature_range
+                )
 
     def calc_vecs(self, alg):
         """
@@ -105,7 +151,7 @@ class Dataset_annot():
         ----------
         alg : The Algorithm to be used to create the sentence vectors."""
         if not alg.trained:
-            alg.train(self.train_data)
+            alg.train(self.train_data, self.train_score)
         self.phrase_vecs[alg] = [[], []]
         print("Creating Vectors")
         for item0, item1 in zip(self.test_data[0], self.test_data[1]):
@@ -121,14 +167,13 @@ class Dataset_annot():
         alg : The Algorithm to be used to calculate the similarity between two senteces."""
         results = []
         if not alg.trained:
-            alg.train(self.train_data)
+            alg.train(self.train_data, self.train_score)
         if alg in self.phrase_vecs:
             data = self.phrase_vecs[alg]
         else:
             self.calc_vecs(alg)
         for vec1, vec2 in zip(self.phrase_vecs[alg][0], self.phrase_vecs[alg][1]):
-            res = float(alg.compare(
-                vec1, vec2))
+            res = float(alg.compare(vec1, vec2))
             results.append(res)
         self.results[alg] = results
 
@@ -138,7 +183,7 @@ class Dataset_annot():
         
         Parameters
         ----------
-        alg : The Algorithm to be used to calculate the similarity between the sentece paris.
+        alg : The Algorithm to be used to calculate the similarity between the sentence pairs.
         function : A function that calculates the metric given two matricies.
         """
         if alg not in self.results:
@@ -152,23 +197,23 @@ class Dataset_annot():
     def output_sick(self, alg):
         if self.sick:
             with open("./data/results_SICK_{}".format(alg.name), "w+") as data:
-                output = "pair_ID \t entailment_judgment \t relatedness_score\n"
+                output = "pair_ID \t entailment_judgment \t relatedness_ment_judgment \t relatedness_score\n"
                 for idx, res in zip(self.test_ids, self.results[alg]):
-                    output += "{} \t NA \t {}\n".format(
-                        idx, res*4+1)
+                    output += "{} \t NA \t {}\n".format(idx, res * 4 + 1)
                 data.write(output)
 
 
 def run_alg(alg, db):
     result = {}
-    result["traintime"] = round(util.measure_time(
-        "Traintime", alg.train, db.train_data), 3)
+    result["traintime"] = round(
+        util.measure_time("Traintime", alg.train, db.train_data, db.train_score), 3
+    )
     starttime = time.time()
     result["pearson"] = round(db.compare(pearsonr, alg)[0], 3)
     result["spearman"] = round(db.compare(spearmanr, alg)[0], 3)
     result["mse"] = round(db.compare(mean_squared_error, alg), 3)
     endtime = time.time()
-    result["runtime"] = round(endtime-starttime, 3)
+    result["runtime"] = round(endtime - starttime, 3)
     result["alg"] = alg.name
     result["db"] = db.name
 
@@ -196,6 +241,7 @@ def benchmark(algorithms):
         json.dump(output, f, indent=2)
 
 
+
 def create_alg_list(in_list):
     """
     Returns a list of algorithms to be run when given a list of commandline arguments as strings.
@@ -221,6 +267,7 @@ def create_alg_list(in_list):
     Algorithms["spacy_w2v"] = algs.spacy_sem_sim
     Algorithms["spacy_bert"] = algs.spacy_bert
     Algorithms["gensim_wmd"] = algs.gensim_wmd
+    Algorithms["gensim_d2v"] = algs.gensim_d2v
     if in_list != None:
         in_list = in_list.split(",")
         for alg in in_list:
@@ -234,8 +281,14 @@ def create_alg_list(in_list):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Benchmarks Semantic Similiarty Benchmarks")
-    parser.add_argument("algs", metavar="algs", type=str, nargs='?',
-                        help="Choose which Algorithms to run by passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation, bow_ls - bag of words eliminating stopwords using lemmatisation and",)
+        description="Benchmarks Semantic Similiarty Benchmarks"
+    )
+    parser.add_argument(
+        "algs",
+        metavar="algs",
+        type=str,
+        nargs="?",
+        help="Choose which Algorithms to run by passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation, bow_ls - bag of words eliminating stopwords using lemmatisation and",
+    )
     args = parser.parse_args()
     benchmark(create_alg_list(args.algs))
