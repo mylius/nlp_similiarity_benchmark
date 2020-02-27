@@ -3,6 +3,7 @@ import algs
 import hashlib
 import json
 from os import path
+from os import makedirs
 from collections import defaultdict
 from collections import OrderedDict
 from scipy import special
@@ -26,7 +27,7 @@ class Dataset:
     Example
     ----------
     db = Dataset_annot("test")
-    db.load_sick("./data/data.txt")
+    db.load_sick("./annotations/annotations.txt")
     db.run_annot()
     """
 
@@ -39,6 +40,12 @@ class Dataset:
         # This is a threshold. If difference in similarity between two sentences is bigger than this and the user still disagress with the annotation the script will save the ids.
         self.rec_thresh = 0.12
         self.strong_disagreement = []
+        if not path.exists("./annotations/"):
+            try:
+                makedirs("./annotations/")
+            except OSError as exc: 
+                if exc.errno != errno.EEXIST:
+                    raise
 
     def __str__(self):
         """Returns all strings in the dataset."""
@@ -101,7 +108,7 @@ class Dataset:
         for idx, vec1 in enumerate(self.phrase_vecs[alg]):
             for idy, vec2 in enumerate(self.phrase_vecs[alg]):
                 self.refscores[idx][idy] = alg.compare(vec1, vec2)
-        with open("./data/{}-scores.json".format(self.hash), "w+") as f:
+        with open("./annotations/{}-scores.json".format(self.hash), "w+") as f:
             json.dump(self.refscores.tolist(), f, indent=2)
 
     def run_annot(self):
@@ -162,28 +169,28 @@ class Dataset:
 
     def save_results(self):
         """ Saves the current results of annotations, their correctness and strong disagreements. """
-        with open("./data/{}-annots.json".format(self.hash), "w+") as f:
+        with open("./annotations/{}-annots.json".format(self.hash), "w+") as f:
             json.dump(self.annots, f, indent=2)
-        with open("./data/{}-correctness.json".format(self.hash), "w+") as f:
+        with open("./annotations/{}-correctness.json".format(self.hash), "w+") as f:
             json.dump(self.correctness, f, indent=2)
-        with open("./data/{}-disagreement.json".format(self.hash), "w+") as f:
+        with open("./annotations/{}-disagreement.json".format(self.hash), "w+") as f:
             json.dump(self.strong_disagreement, f, indent=2)
 
-    def load_files(self,alg):
+    def load_files(self, alg):
         """ Saves the saved results of annotations, their correctness and strong disagreements. """
-        if path.exists("./data/{}-scores.json".format(self.hash)):
-            with open("./data/{}-scores.json".format(self.hash)) as f:
+        if path.exists("./annotations/{}-scores.json".format(self.hash)):
+            with open("./annotations/{}-scores.json".format(self.hash)) as f:
                 self.refscores = np.array(json.load(f))
         else:
             self.calc_scores(alg)
-        if path.exists("./data/{}-annots.json".format(self.hash)):
-            with open("./data/{}-annots.json".format(self.hash)) as f:
+        if path.exists("./annotations/{}-annots.json".format(self.hash)):
+            with open("./annotations/{}-annots.json".format(self.hash)) as f:
                 self.annots = defaultdict(int, json.load(f))
-        if path.exists("./data/{}-correctness.json".format(self.hash)):
-            with open("./data/{}-correctness.json".format(self.hash)) as f:
+        if path.exists("./annotations/{}-correctness.json".format(self.hash)):
+            with open("./annotations/{}-correctness.json".format(self.hash)) as f:
                 self.correctness = json.load(f)
-        if path.exists("./data/{}-disagreement.json".format(self.hash)):
-            with open("./data/{}-disagreement.json".format(self.hash)) as f:
+        if path.exists("./annotations/{}-disagreement.json".format(self.hash)):
+            with open("./annotations/{}-disagreement.json".format(self.hash)) as f:
                 self.strong_disagreement = json.load(f)
                 print(self.strong_disagreement)
 
