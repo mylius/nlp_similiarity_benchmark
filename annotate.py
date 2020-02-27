@@ -27,7 +27,7 @@ class Dataset:
     Example
     ----------
     db = Dataset_annot("test")
-    db.load_sick("./annotations/annotations.txt")
+    db.load_sick("./data/data.txt")
     db.run_annot()
     """
 
