@@ -76,9 +76,12 @@ class Dataset:
         ----------
         path : A string denoting the path to the file to be loaded.
         """
-        with open(path, "r") as f:
-            for line in f.readlines():
-                self.data.append(line)
+        try:
+            with open(path, "r") as f:
+                for line in f.readlines():
+                    self.data.append(line)
+        except EnvironmentError:
+            raise
         data_str = str(self.data)
         data_str = data_str.encode("utf-8")
         self.hash = hashlib.md5(data_str).hexdigest()
@@ -261,6 +264,6 @@ class Dataset:
 
 if __name__ == "__main__":
     db = Dataset("nachrichten")
-    db.load_data("./data/nachrichten.txt")
+    db.load_data("./data/nachrichten2.txt")
     db.run_annot()
     db.evaluate()
