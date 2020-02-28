@@ -10,7 +10,8 @@ import time
 import json
 from collections import OrderedDict
 
-class Dataset_annot:
+
+class Dataset:
     """
     A class that stores a dataset of annotated semantic similarity data and allows the benchmarking of algorithms on it.
     There are loading functions for the SICK and the STS dataset predefinded [load_sts(),load_sick()].
@@ -23,7 +24,7 @@ class Dataset_annot:
 
     Example
     ----------
-    db = Dataset_annot("sick")
+    db = Dataset("sick")
     db.load_sick()
     alg = algs.BagOfWords()
     alg.train(db.train_data,db.train_score)
@@ -50,27 +51,32 @@ class Dataset_annot:
         Parameters
         ----------
         path : path to the file containing the data.
-        data_cols : Indizes of the columns containing the sentences as a list.
-        data : The data field in Dataset_annot() that should be filled.
+        data_cols : Indices of the columns containing the sentences as a list.
+        data : The data field in Dataset() that should be filled.
         score_col : Index of the column in the file containing the scores.
-        scores :  The score field in Dataset_annot() that should be filled.
+        scores :  The score field in Dataset() that should be filled.
         id_col : Index of the column in the file containing the ids.
-        ids :  The id field in Dataset_annot() that should be filled.
+        ids :  The id field in Dataset() that should be filled.
         """
-        with open(path, "r") as f:
-            next(f)
-            for line in f.readlines():
-                line = line.split("\t")
-                for idx, row in enumerate(data_cols):
-                    data[idx].append(line[row])
-                scores.append(float(line[score_col]))
-                if id_col != None:
-                    ids.append(line[id_col])
+        try:
+            with open(path, "r") as f:
+                next(f)
+                for line in f.readlines():
+                    line = line.split("\t")
+                    for idx, row in enumerate(data_cols):
+                        data[idx].append(line[row])
+                    scores.append(float(line[score_col]))
+                    if id_col != None:
+                        ids.append(line[id_col])
+        except EnvironmentError:
+            raise
 
-    def load_custom(self, path_train, path_test,data_cols,score_col, id_col = None):
+    def load_custom(
+        self, path_train, path_test, data_cols=[0, 1], score_col=2, id_col=None
+    ):
         """Loads a custom dataset.
 
-         Parameters
+        uParameters
         ----------
         path_train : path to the file containing the training data.
         path_test : path to the file containing the test data.
@@ -78,23 +84,29 @@ class Dataset_annot:
         score_col : Index of the column in the file containing the scores.
         id_col : Index of the column in the file containing the ids.
         """
-        #train:
-        self.load(path_train,
+        # train data:
+        self.load(
+            path_train,
             data_cols,
             self.train_data,
             score_col,
             self.train_score,
             id_col,
-            self.train_ids,)
-        #test:
-        self.load(path_test,
+            self.train_ids,
+        )
+        # test data:
+        self.load(
+            path_test,
             data_cols,
             self.test_data,
             score_col,
             self.test_score,
             id_col,
-            self.test_ids,)
-
+            self.test_ids,
+        )
+        if len(self.train_score) < 2 or len(self.test_score) < 2:
+            print("At least two entries in each dataset are needed.")
+            exit()
 
     def load_sick(self):
         """Loads the SICK dataset."""
@@ -192,6 +204,8 @@ class Dataset_annot:
             self.norm_results((1, 5))
         elif self.sts:
             self.norm_results((0, 5))
+        else:
+            self.norm_results((min(self.train_score), max(self.train_score)))
         return function(self.normed_results[alg], self.test_score)
 
     def output_sick(self, alg):
@@ -220,26 +234,34 @@ def run_alg(alg, db):
     return result
 
 
-def benchmark(algorithms):
-    db2 = Dataset_annot("sts")
-    db2.load_sts()
-    print("Results for STS dataset:")
+def benchmark(algorithms, custom_data_paths, run_stand):
     run_results = {}
-    for alg in algorithms:
-        run_results[alg.name +
-                    db2.name] = run_alg(alg, db2)
-    db = Dataset_annot("sick")
-    db.load_sick()
-    print("Results for SICK dataset:")
-    for alg in algorithms:
-        run_results[alg.name + db.name] = run_alg(alg, db)
-        # db.output_sick(alg)
-    output = []
-    for res in run_results:
-        output.append(run_results[res])
-    with open("./data/results.json", "w+") as f:
-        json.dump(output, f, indent=2)
-
+    if custom_data_paths != None:
+        db_c = Dataset("custom")
+        print(db_c.train_score)
+        db_c.load_custom(custom_data_paths[0], custom_data_paths[1])
+        print("Running benchmark for custom dataset:")
+        for alg in algorithms:
+            run_results[alg.name + db_c.name] = run_alg(alg, db_c)
+    if run_stand:
+        db2 = Dataset("sts")
+        db2.load_sts()
+        print("Running benchmark for STS dataset")
+        for alg in algorithms:
+            run_results[alg.name + db2.name] = run_alg(alg, db2)
+        db = Dataset("sick")
+        db.load_sick()
+        print("Running benchmark for dataset:")
+        for alg in algorithms:
+            run_results[alg.name + db.name] = run_alg(alg, db)
+    if run_results == {}:
+        print("No data set was specified to be run.")
+    else:
+        output = []
+        for res in run_results:
+            output.append(run_results[res])
+        with open("./data/results.json", "w+") as f:
+            json.dump(output, f, indent=2)
 
 
 def create_alg_list(in_list):
@@ -290,5 +312,18 @@ if __name__ == "__main__":
         nargs="?",
         help="Choose which Algorithms to run by passing arguments: bow - simple bag of words, bow_l - bag of words using lemmatisation, bow_ls - bag of words eliminating stopwords using lemmatisation and",
     )
+    parser.add_argument(
+        "-custom",
+        metavar="custom",
+        type=str,
+        nargs=2,
+        help="Provide the paths to the custom dataset. The first is the training set, the second the test set.",
+    )
+    parser.add_argument(
+        "-r",
+        action="store_true",
+        help="If set the benchmark on the standard datasets will be run.",
+    )
     args = parser.parse_args()
-    benchmark(create_alg_list(args.algs))
+    benchmark(create_alg_list(args.algs), args.custom, args.r)
+

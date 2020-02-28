@@ -1,3 +1,4 @@
+score 	 sentence_1 	 sentence_2
 3.00 	 You'll need to check the particular policies of each publisher to see what is allowed and what is not allowed.	If you need to publish the book and you have found one publisher that allows it. 
 0.60 	 I am not aware of any university run participant pools.	At the universities I've worked in North America, human-subject studies (esp. 
 1.00 	 Apart from admission (which normally should not be related to age), there is something that's related to your question.	Age is not a PhD admission facor in the continental Europe, too. 

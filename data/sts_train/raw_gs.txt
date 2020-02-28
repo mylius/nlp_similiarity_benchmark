@@ -1,3 +1,4 @@
+score 	 sentence_1 	 sentence_2
 3.9738 	 Bread lasts longer out of the refrigerator.	Storing bread in the freezer you can store for several days and keep it soft. 
 3.4675 	 Some people I know claim it imparts the salt flavor to meat, without any of the actual sodium being present.	Salt is a good means to control/suppress flames and flareups without having a cooling effect on the coals. 
 3.0174 	 Soaking for a while in cold water beforehand also helps tame the bitterness.	Braising gently in milk will also, I find, help with bitterness. 

@@ -13,7 +13,7 @@ def append_test(folder):
     raw_files = ["/raw/STS.input.answers-forums.txt", "/raw/STS.input.answers-students.txt",
                 "/raw/STS.input.belief.txt", "/raw/STS.input.headlines.txt", "/raw/STS.input.images.txt"]
 
-    raw_gs = ""
+    raw_gs = "score 	 sentence_1 	 sentence_2"
     gs_list = goldstandard.split("\n")
     for in_file in raw_files:
         with open(folder+in_file) as data:
@@ -58,7 +58,7 @@ def append_train(folder):
                  "/raw/2013_test/STS.input.OnWN.txt", "/raw/2012_test/STS.input.MSRpar.txt",
                 "/raw/2012_test/STS.input.MSRvid.txt","/raw/2012_test/STS.input.SMTeuroparl.txt",
                 "/raw/2012_test/STS.input.surprise.OnWN.txt","/raw/2012_test/STS.input.surprise.SMTnews.txt"]
-    raw_gs = ""
+    raw_gs = "score 	 sentence_1 	 sentence_2"
     gs_list = goldstandard.split("\n")
     for in_file in raw_files:
         with open(folder+in_file) as data:
