@@ -4,11 +4,6 @@ import numpy as np
 df = pd.read_json("./data/results_all.json", encoding="utf8")
 df = df[["alg", "db", "pearson", "spearman", "mse", "traintime", "runtime"]]
 
-sts = df.loc[df["db"] == "sts"]
-sick = df.loc[df["db"] == "sick"]
-sts = sts.set_index("alg")
-sick = sick.set_index("alg")
-
 pear_sick = list(df["pearson"].loc[df["db"] == "sick"])
 spear_sick = list(df["spearman"].loc[df["db"] == "sick"])
 mse_sick = list(df["mse"].loc[df["db"] == "sick"])
