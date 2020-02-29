@@ -4,16 +4,20 @@ import numpy as np
 df = pd.read_json("./data/results_all.json", encoding="utf8")
 df = df[["alg", "db", "pearson", "spearman", "mse", "traintime", "runtime"]]
 
-pear_sick = list(df["pearson"].loc[df["db"] == "sick"])
-spear_sick = list(df["spearman"].loc[df["db"] == "sick"])
-mse_sick = list(df["mse"].loc[df["db"] == "sick"])
-train_sick = list(df["traintime"].loc[df["db"] == "sick"])
-run_sick = list(df["runtime"].loc[df["db"] == "sick"])
-pear_sts = list(df["pearson"].loc[df["db"] == "sts"])
-spear_sts = list(df["spearman"].loc[df["db"] == "sts"])
-mse_sts = list(df["mse"].loc[df["db"] == "sts"])
-train_sts = list(df["traintime"].loc[df["db"] == "sts"])
-run_sts = list(df["runtime"].loc[df["db"] == "sts"])
+values = {}
+values["pear"] = {}
+values["spear"] = {}
+values["mse"] = {}
+values["train"] = {}
+values["run"] = {}
+for item in df["db"].unique():
+    values["pear"][item] = list(df["pearson"].loc[df["db"] == item])
+    values["spear"][item] = list(df["spearman"].loc[df["db"] == item])
+    values["mse"][item] = list(df["mse"].loc[df["db"] == item])
+    values["train"][item] = list(df["traintime"].loc[df["db"] == item])
+    values["run"][item] = list(df["runtime"].loc[df["db"] == item])
+
+
 
 def create_grouped_bar_graph(sick,sts, title,filename):
 
@@ -54,8 +58,24 @@ def create_grouped_bar_graph(sick,sts, title,filename):
     plt.xticks([r + barWidth for r in range(len(bar_cos_sick))], ["bow re","bow re stop","bow lem","bow lem stop","spacy W2V","spacy bert","gensim wmd","gensim D2V"])
     plt.savefig('./figs/sts'+filename, dpi = 150)
 
-create_grouped_bar_graph(pear_sick,pear_sts," – Pearson coefficient","_pear.png")
-create_grouped_bar_graph(spear_sick,spear_sts," – Spearman coefficient","_spear.png")
-create_grouped_bar_graph(mse_sick,mse_sts," – mean squared error","_mse.png")
-create_grouped_bar_graph(train_sick,train_sts," – training time","_train.png")
-create_grouped_bar_graph(run_sick,run_sts," – run time","_run.png")
+
+for item in values:
+    entries = []
+    for dataset in values[item]:
+        entries.append(values[item][dataset])
+    if item == "pear":
+        title = " – Pearson coefficient"
+        name = "_pear.png"
+    elif item == "spear":
+        title = " – Spearman coefficient"
+        name = "_spear.png"
+    elif item == "mse":
+        title = " – mean squared error"
+        name = "_mse.png"
+    elif item == "train":
+        title = " – training time"
+        name = "_train.png"
+    elif item == "run":
+        title = " – run time"
+        name = "_run.png"
+    create_grouped_bar_graph(entries[0],entries[1],title,name)
