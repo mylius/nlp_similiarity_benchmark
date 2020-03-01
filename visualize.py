@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-df = pd.read_json("./data/results_all.json", encoding="utf8")
+df = pd.read_json("./data/results.json", encoding="utf8")
 df = df[["alg", "db", "pearson", "spearman", "mse", "traintime", "runtime"]]
 
 values = {}
