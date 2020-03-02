@@ -51,4 +51,10 @@ Once a benchmark has been run `python visualize.py` can be run to create the fig
 
 ## Documentation
 
-See wiki
+See [wiki](https://github.com/mylius/nlp_similiarity_benchmark/wiki)
+
+## Credits
+
+This project was implemented as a practical for the [Database Research 
+Chair](https://dbs.ifi.uni-heidelberg.de/) at Heidelberg University.
+Special thanks go to Dennis and Sebastian for their tutoring.
