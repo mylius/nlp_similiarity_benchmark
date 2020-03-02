@@ -47,3 +47,8 @@ Running the standard benchmark is done in the following fashion.
 ### Visualisation
 
 Once a benchmark has been run `python visualize.py` can be run to create the figures seen in the [results](Document_Similarity_Benchmark#Results "wikilink") section. The figures will be saved in the `./figs/`-subfolder.
+
+
+## Documentation
+
+See wiki
