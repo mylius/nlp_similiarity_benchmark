@@ -22,6 +22,9 @@ from gensim.similarities import WmdSimilarity
 from gensim.models.doc2vec import Doc2Vec
 from gensim.models.doc2vec import TaggedDocument
 from scipy.spatial.distance import cosine as sci_cos
+#SentenceTransformer
+from sentence_transformers import SentenceTransformer
+
 # LSTM
 import pandas as pd
 from keras.preprocessing.sequence import pad_sequences
@@ -323,7 +326,7 @@ class spacy_sem_sim(Algorithm):
 
 class spacy_bert(Algorithm):
     """
-    Implements a BERT model by using spacytransormer's existing vectors.
+    Implements a BERT model by using spacytransformer's existing vectors.
 
     Parameters
     ----------
@@ -352,6 +355,31 @@ class spacy_bert(Algorithm):
             raise ValueError("Unsupported language")
         self.trained = True
 
+
+class sent_transf(Algorithm):
+    """
+    Implements a RoBERT model by using SentenceTransformer's existing vectors.
+
+    Parameters
+    ----------
+    name : A name for the algorithm.
+    language : the language of the dataset to be analyzed. Either "german" or "english". 
+    """
+
+    def __init__(self, name="Sentence Transformer", language="english"):
+        super().__init__(name, language)
+
+    def create_vec(self, in_line):
+        """Returns a matrix denoting which words from the dictionary occure in a given line."""
+        return self.nlp.encode([in_line])
+
+    def train(self, in_dataset, in_score):
+        print("Initializing Sentence Transformer model")
+        if self.language == "english":
+            self.nlp = SentenceTransformer('stsb-roberta-base')
+        else:
+            raise ValueError("Unsupported language")
+        self.trained = True
 
 class gensim_wmd(Algorithm):
     """

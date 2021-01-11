@@ -136,7 +136,7 @@ class Dataset:
             "./data/sts_train/raw_gs.txt", [1, 2], self.train_data, 0, self.train_score
         )
         self.load(
-            "./data/sts_test/raw_gs.txt", [1, 2], self.test_data, 0, self.test_score
+            "./data/sts_test/STSb.txt", [1, 2], self.test_data, 0, self.test_score
         )
         self.sts = True
 
@@ -249,11 +249,6 @@ def benchmark(algorithms, custom_data_paths, run_stand):
         print("Running benchmark for STS dataset")
         for alg in algorithms:
             run_results[alg.name + db2.name] = run_alg(alg, db2)
-        db = Dataset("sick")
-        db.load_sick()
-        print("Running benchmark for dataset:")
-        for alg in algorithms:
-            run_results[alg.name + db.name] = run_alg(alg, db)
     if run_results == {}:
         print("No data set was specified to be run.")
     else:
@@ -288,6 +283,7 @@ def create_alg_list(in_list):
     Algorithms["bow_l2_ls"] = algs.BagOfWords_l2_lemma_stop
     Algorithms["spacy_w2v"] = algs.spacy_sem_sim
     Algorithms["spacy_bert"] = algs.spacy_bert
+    Algorithms["sent_transf"] = algs.sent_transf
     Algorithms["gensim_wmd"] = algs.gensim_wmd
     Algorithms["gensim_d2v"] = algs.gensim_d2v
     if in_list != None:
