@@ -249,6 +249,11 @@ def benchmark(algorithms, custom_data_paths, run_stand):
         print("Running benchmark for STS dataset")
         for alg in algorithms:
             run_results[alg.name + db2.name] = run_alg(alg, db2)
+                db = Dataset("sick")
+        db.load_sick()
+        print("Running benchmark for SICK dataset:")
+        for alg in algorithms:
+            run_results[alg.name + db.name] = run_alg(alg, db)
     if run_results == {}:
         print("No data set was specified to be run.")
     else:
